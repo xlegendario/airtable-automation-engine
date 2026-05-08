@@ -94,3 +94,22 @@ export async function listRecords(tableName, params = {}) {
 
   return allRecords;
 }
+
+export async function createRecord(tableName, fields) {
+  const url = `${AIRTABLE_API}/${process.env.AIRTABLE_BASE_ID}/${encodeURIComponent(tableName)}`;
+
+  const res = await fetch(url, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${process.env.AIRTABLE_TOKEN}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ fields }),
+  });
+
+  if (!res.ok) {
+    throw new Error(`Airtable createRecord failed: ${res.status} ${await res.text()}`);
+  }
+
+  return res.json();
+}
