@@ -64,13 +64,29 @@ export const autoAllocateBestUnit = {
     const clientCountry = getFirstValue(f["Client Country"]);
     const clientSellerId = getFirstValue(f["Client Seller ID"]);
     const orderIdField = getFirstValue(f["Order ID"]);
-
+    
+    // PLAK HIER DIT:
+    console.log("missing-data debug", {
+      recordId: order.id,
+      rawSKU: f["SKU"],
+      orderSKU,
+      rawSoftSKU: f["SKU (Soft)"],
+      orderSoftSKU,
+      rawSize: f["Size"],
+      orderSize,
+      rawClient: f["Client"],
+      clientId,
+    });
+    
     if ((!orderSKU && !orderSoftSKU) || !orderSize || !clientId) {
-      await ctx.airtable.updateRecord(this.tableName, order.id, {
-        "Fulfillment Status": "Missing Data",
-        Notes: "Missing SKU/Soft SKU, Size, or Client",
-        auto_allocate_attempted_at: new Date().toISOString(),
+      console.log("⚠️ Auto allocate skipped: missing data", {
+        recordId: order.id,
+        orderSKU,
+        orderSoftSKU,
+        orderSize,
+        clientId,
       });
+    
       return;
     }
 
