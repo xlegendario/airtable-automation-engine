@@ -12,10 +12,11 @@ export const shippingLabelReadyToShip = {
 
   async shouldRun(record) {
     const f = record.fields;
-
+    const status = getSelectName(f["Fulfillment Status"]);
+  
     return (
       !!f["Shipping Label"] &&
-      getSelectName(f["Fulfillment Status"]) !== "Ready to Ship"
+      ["Allocated", "Awaiting Label"].includes(status)
     );
   },
 
