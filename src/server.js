@@ -27,9 +27,14 @@ app.get("/", (req, res) => {
 });
 
 app.post("/webhook", async (req, res) => {
+  console.log("📩 Airtable webhook received", new Date().toISOString());
+
   res.sendStatus(200);
 
-  if (isProcessing) return;
+  if (isProcessing) {
+    console.log("⏳ Already processing, skipping");
+    return;
+  }
 
   isProcessing = true;
 
@@ -67,6 +72,8 @@ async function processWebhookPayloads() {
 }
 
 async function processRecord(recordId, eventType) {
+  console.log(`🔎 Processing record ${recordId} eventType=${eventType}`);
+
   for (const automation of automations) {
     if (
       automation.eventTypes &&
@@ -75,9 +82,16 @@ async function processRecord(recordId, eventType) {
       continue;
     }
 
+    console.log(`➡️ Checking automation: ${automation.name}`);
+
     const record = await airtable.getRecord(automation.tableName, recordId);
 
-    if (await automation.shouldRun(record)) {
+    const shouldRun = await automation.shouldRun(record);
+
+    console.log(`   shouldRun=${shouldRun}`);
+
+    if (shouldRun) {
+      console.log(`🚀 Running automation: ${automation.name}`);
       await automation.run(record, { airtable, eventType });
     }
   }
