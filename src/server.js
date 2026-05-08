@@ -107,6 +107,27 @@ async function getChangedFieldNames(tableId, recordChange) {
     .map((fieldId) => fieldNameById.get(fieldId) || fieldId);
 }
 
+function hasRelevantAutomationForChange(tableName, eventType, changedFieldNames) {
+  return automations.some((automation) => {
+    if (automation.tableName !== tableName) return false;
+
+    if (
+      automation.eventTypes &&
+      !automation.eventTypes.includes(eventType)
+    ) {
+      return false;
+    }
+
+    if (eventType === "created") return true;
+
+    if (!automation.watchFields?.length) return true;
+
+    return automation.watchFields.some((fieldName) =>
+      changedFieldNames.includes(fieldName)
+    );
+  });
+}
+
 async function processWebhookPayloads() {
   const data = await getWebhookPayloads(cursor);
 
@@ -131,6 +152,19 @@ async function processWebhookPayloads() {
       for (const [recordId, recordChange] of Object.entries(changedRecords)) {
         const tableInfo = await getTableInfoById(tableId);
         const changedFieldNames = await getChangedFieldNames(tableId, recordChange);
+      
+        const relevant = hasRelevantAutomationForChange(
+          tableInfo?.name,
+          "changed",
+          changedFieldNames
+        );
+      
+        if (!relevant) {
+          console.log(
+            `⏭️ Skipping record ${recordId}; irrelevant fields changed: ${changedFieldNames.join(", ")}`
+          );
+          continue;
+        }
       
         await processRecord(
           recordId,
