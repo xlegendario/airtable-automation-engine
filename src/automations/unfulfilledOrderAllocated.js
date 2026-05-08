@@ -3,6 +3,7 @@ import { getFirstValue } from "../lib/helpers.js";
 export const unfulfilledOrderAllocated = {
   name: "unfulfilledOrderAllocated",
   tableName: "Unfulfilled Orders Log",
+  eventTypes: ["changed"],
 
   async shouldRun(record) {
     const fields = record.fields;
