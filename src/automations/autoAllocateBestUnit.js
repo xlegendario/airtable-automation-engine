@@ -65,19 +65,6 @@ export const autoAllocateBestUnit = {
     const clientSellerId = getFirstValue(f["Client Seller ID"]);
     const orderIdField = getFirstValue(f["Order ID"]);
     
-    // PLAK HIER DIT:
-    console.log("missing-data debug", {
-      recordId: order.id,
-      rawSKU: f["SKU"],
-      orderSKU,
-      rawSoftSKU: f["SKU (Soft)"],
-      orderSoftSKU,
-      rawSize: f["Size"],
-      orderSize,
-      rawClient: f["Client"],
-      clientId,
-    });
-    
     if ((!orderSKU && !orderSoftSKU) || !orderSize || !clientId) {
       console.log("⚠️ Auto allocate skipped: missing data", {
         recordId: order.id,
