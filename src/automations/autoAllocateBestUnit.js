@@ -88,24 +88,16 @@ export const autoAllocateBestUnit = {
       return;
     }
 
-    const inventoryUnits = await ctx.airtable.listRecords("Inventory Units");
-
-    const matchingUnits = inventoryUnits.filter((unit) => {
-      const uf = unit.fields;
-
-      const sku = getFirstValue(uf["SKU"]).toUpperCase();
-      const size = getFirstValue(uf["Size"]);
-      const status = getSelectName(uf["Availability Status"]);
-
-      const matchesSKU =
-        (orderSKU && sku === orderSKU) ||
-        (orderSoftSKU && sku === orderSoftSKU);
-
-      return (
-        matchesSKU &&
-        String(size) === String(orderSize) &&
-        status === "Available"
-      );
+    const inventoryFormula = buildInventoryMatchFormula(
+      orderSKU,
+      orderSoftSKU,
+      orderSize
+    );
+    
+    console.log("Inventory match formula", inventoryFormula);
+    
+    const matchingUnits = await ctx.airtable.listRecords("Inventory Units", {
+      filterByFormula: inventoryFormula,
     });
 
     const returnServiceMatches = matchingUnits.filter(
@@ -365,4 +357,31 @@ async function postWebhook(url, payload) {
   if (!res.ok) {
     throw new Error(`Webhook failed: ${res.status} ${await res.text()}`);
   }
+}
+
+function escapeFormulaString(value) {
+  return String(value || "").replace(/\\/g, "\\\\").replace(/"/g, '\\"');
+}
+
+function buildInventoryMatchFormula(orderSKU, orderSoftSKU, orderSize) {
+  const skuConditions = [];
+
+  if (orderSKU) {
+    skuConditions.push(`{SKU} = "${escapeFormulaString(orderSKU)}"`);
+  }
+
+  if (orderSoftSKU) {
+    skuConditions.push(`{SKU} = "${escapeFormulaString(orderSoftSKU)}"`);
+  }
+
+  const skuFormula =
+    skuConditions.length === 1
+      ? skuConditions[0]
+      : `OR(${skuConditions.join(", ")})`;
+
+  return `AND(
+    ${skuFormula},
+    {Size} = "${escapeFormulaString(orderSize)}",
+    {Availability Status} = "Available"
+  )`;
 }
