@@ -23,6 +23,15 @@ export const autoAllocateBestUnit = {
     const fulfillmentStatus = getSelectName(f["Fulfillment Status"]);
     const riskLevel = getSelectName(f["Match Risk Level"]);
 
+    console.log("autoAllocateBestUnit debug", {
+      recordId: record.id,
+      fulfillmentStatus,
+      linkedInventoryUnit,
+      hasLinked: hasLinkedRecord(linkedInventoryUnit),
+      riskLevel,
+      attempted: f["auto_allocate_attempted_at"],
+    });
+
     return (
       !hasLinkedRecord(linkedInventoryUnit) &&
       ["Pending", "Outsource"].includes(fulfillmentStatus) &&
