@@ -142,83 +142,133 @@ export const calculateLinkedUnitPrice = {
       }
     }
 
-    // Normal calculation
-    const targetPrice = getNumber(f["Target Buying Price"]);
-    const maxPrice = getNumber(f["Maximum Buying Price"]);
-
-    const uf = unit.fields;
-
-    const ideal = getNumber(uf["Ideal Selling Price"]);
-    const min = getNumber(uf["Minimum Selling Price"]);
-    const cost = getNumber(uf["Purchase Price"]);
-
-    if (
-      ideal == null ||
-      min == null ||
-      cost == null ||
-      targetPrice == null ||
-      maxPrice == null
-    ) {
-      await ctx.airtable.updateRecord("Unfulfilled Orders Log", order.id, {
-        Notes:
-          "❌ Could not calculate final price. Missing Target/Max/Ideal/Min/Purchase price.",
-        linked_unit_price_calculated_at: new Date().toISOString(),
+    // Normal calculation with retry/refetch (matches Airtable automation behavior)
+    let success = false;
+    
+    for (let attempt = 1; attempt <= 3; attempt++) {
+      console.log(`🔄 Pricing attempt ${attempt}`);
+    
+      // Re-fetch fresh order each attempt
+      const freshOrder = await ctx.airtable.getRecord(
+        "Unfulfilled Orders Log",
+        order.id
+      );
+    
+      const freshFields = freshOrder.fields;
+    
+      const targetPrice = getNumber(freshFields["Target Buying Price"]);
+      const maxPrice = getNumber(freshFields["Maximum Buying Price"]);
+    
+      // Re-fetch fresh inventory unit too
+      const freshUnit = await ctx.airtable.getRecord(
+        "Inventory Units",
+        unitId
+      );
+    
+      const uf = freshUnit.fields;
+    
+      const ideal = getNumber(uf["Ideal Selling Price"]);
+      const min = getNumber(uf["Minimum Selling Price"]);
+      const cost = getNumber(uf["Purchase Price"]);
+    
+      console.log("pricing debug", {
+        targetPrice,
+        maxPrice,
+        ideal,
+        min,
+        cost,
       });
-
-      console.log("❌ Missing price fields.");
-      return;
-    }
-
-    let candidate = null;
-
-    if (targetPrice >= ideal) {
-      candidate = Math.min(targetPrice, maxPrice);
-    }
-
-    if (candidate === null && targetPrice >= min) {
-      let mid = (targetPrice + ideal) / 2;
-
-      if (mid > maxPrice + EPS) {
+    
+      if (
+        ideal == null ||
+        min == null ||
+        cost == null ||
+        targetPrice == null ||
+        maxPrice == null
+      ) {
+        console.log("⚠️ Missing fields, retrying...");
+    
+        if (attempt < 3) {
+          await new Promise((r) => setTimeout(r, 1000));
+          continue;
+        }
+    
+        await ctx.airtable.updateRecord("Unfulfilled Orders Log", order.id, {
+          Notes:
+            "❌ Could not calculate final price. Missing Target/Max/Ideal/Min/Purchase price.",
+          linked_unit_price_calculated_at: new Date().toISOString(),
+        });
+    
+        return;
+      }
+    
+      let candidate = null;
+    
+      // 1) If target at/above ideal → use target capped to max
+      if (targetPrice >= ideal) {
+        candidate = Math.min(targetPrice, maxPrice);
+      }
+    
+      // 2) If target between min and ideal
+      if (candidate === null && targetPrice >= min) {
+        let mid = (targetPrice + ideal) / 2;
+    
+        if (mid > maxPrice + EPS) {
+          if (maxPrice >= ideal) {
+            mid = (maxPrice + ideal) / 2;
+          } else if (maxPrice >= min) {
+            mid = (maxPrice + min) / 2;
+          } else {
+            mid = null;
+          }
+        }
+    
+        candidate = mid;
+      }
+    
+      // 3) Fallback using max price
+      if (candidate === null) {
         if (maxPrice >= ideal) {
-          mid = (maxPrice + ideal) / 2;
+          candidate = (maxPrice + ideal) / 2;
         } else if (maxPrice >= min) {
-          mid = (maxPrice + min) / 2;
-        } else {
-          mid = null;
+          candidate = (maxPrice + min) / 2;
         }
       }
-
-      candidate = mid;
-    }
-
-    if (candidate === null) {
-      if (maxPrice >= ideal) {
-        candidate = (maxPrice + ideal) / 2;
-      } else if (maxPrice >= min) {
-        candidate = (maxPrice + min) / 2;
+    
+      // 4) Validate
+      if (
+        candidate != null &&
+        candidate <= maxPrice + EPS &&
+        candidate + EPS >= min
+      ) {
+        const finalPrice = round2(candidate);
+    
+        await updateAllocated(order, unitId, finalPrice, ctx, {
+          notes: "Final price calculated from linked inventory unit",
+        });
+    
+        console.log("✅ Records updated successfully.");
+    
+        success = true;
+        break;
+      }
+    
+      console.log("⚠️ Invalid candidate price, retrying...");
+    
+      if (attempt < 3) {
+        await new Promise((r) => setTimeout(r, 1000));
       }
     }
-
-    if (
-      candidate != null &&
-      candidate <= maxPrice + EPS &&
-      candidate + EPS >= min
-    ) {
-      const finalPrice = round2(candidate);
-
-      await updateAllocated(order, unitId, finalPrice, ctx, {
-        notes: "Final price calculated from linked inventory unit",
+    
+    if (!success) {
+      await ctx.airtable.updateRecord("Unfulfilled Orders Log", order.id, {
+        Notes:
+          "❌ Could not calculate a valid final price after 3 attempts. Check Target/Max vs Ideal/Min.",
+        linked_unit_price_calculated_at: new Date().toISOString(),
       });
-
-      console.log("✅ Records updated successfully.");
-      return;
+    
+      console.log("❌ Failed after 3 attempts.");
     }
-
-    await ctx.airtable.updateRecord("Unfulfilled Orders Log", order.id, {
-      Notes:
-        "❌ Could not calculate a valid final price. Check Target/Max vs Ideal/Min.",
-      linked_unit_price_calculated_at: new Date().toISOString(),
-    });
 
     console.log("❌ Failed to calculate valid final price.");
   },
