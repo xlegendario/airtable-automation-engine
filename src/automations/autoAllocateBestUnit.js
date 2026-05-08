@@ -289,11 +289,15 @@ async function handleOutsourceFallback({
 
   if (skuCandidate && orderSize) {
     const stockKeyToFind = `${String(skuCandidate).trim()}-${String(orderSize).trim()}`;
-    const stockLevels = await ctx.airtable.listRecords("Stock Levels");
+    const stockFormula = `{Stock Counter Key} = "${escapeFormulaString(stockKeyToFind)}"`;
 
-    const match = stockLevels.find((r) => {
-      return getFirstValue(r.fields["Stock Counter Key"]) === stockKeyToFind;
+    console.log("Stock Levels match formula", stockFormula);
+    
+    const stockLevels = await ctx.airtable.listRecords("Stock Levels", {
+      filterByFormula: stockFormula,
     });
+    
+    const match = stockLevels[0];
 
     if (match) {
       const partnerLevel = getNumber(match.fields["Partner Stock Level"]);
