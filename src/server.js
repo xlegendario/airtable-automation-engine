@@ -130,28 +130,33 @@ function hasRelevantAutomationForChange(tableName, eventType, changedFieldNames)
 
 async function processWebhookPayloads() {
   const data = await getWebhookPayloads(cursor);
-  
-    console.log("Webhook payload debug", {
+
+  console.log("Webhook payload debug", {
     oldCursor: cursor,
     newCursor: data.cursor,
     payloadCount: data.payloads?.length || 0,
   });
-  
-  for (const payload of data.payloads || []) {
-    console.log("Payload keys", Object.keys(payload));
-    console.log("Payload preview", JSON.stringify(payload).slice(0, 1000));
-  }
 
   for (const payload of data.payloads || []) {
     const changedTables = payload.changedTablesById || {};
 
     for (const [tableId, tableChange] of Object.entries(changedTables)) {
+      const tableInfo = await getTableInfoById(tableId);
+
       const createdRecords = tableChange.createdRecordsById || {};
-      const changedRecords = tableChange.changedRecordsById || {};
+
+      let changedRecords = {
+        ...(tableChange.changedRecordsById || {}),
+      };
+
+      for (const viewChange of Object.values(tableChange.changedViewsById || {})) {
+        Object.assign(
+          changedRecords,
+          viewChange.changedRecordsById || {}
+        );
+      }
 
       for (const recordId of Object.keys(createdRecords)) {
-        const tableInfo = await getTableInfoById(tableId);
-      
         await processRecord(
           recordId,
           "created",
@@ -161,22 +166,24 @@ async function processWebhookPayloads() {
       }
 
       for (const [recordId, recordChange] of Object.entries(changedRecords)) {
-        const tableInfo = await getTableInfoById(tableId);
-        const changedFieldNames = await getChangedFieldNames(tableId, recordChange);
-      
+        const changedFieldNames = await getChangedFieldNames(
+          tableId,
+          recordChange
+        );
+
         const relevant = hasRelevantAutomationForChange(
           tableInfo?.name,
           "changed",
           changedFieldNames
         );
-      
+
         if (!relevant) {
           console.log(
             `⏭️ Skipping record ${recordId}; irrelevant fields changed: ${changedFieldNames.join(", ")}`
           );
           continue;
         }
-      
+
         await processRecord(
           recordId,
           "changed",
