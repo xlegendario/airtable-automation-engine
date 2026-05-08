@@ -133,7 +133,7 @@ export const autoAllocateBestUnit = {
       });
 
       await ctx.airtable.updateRecord("Inventory Units", sameSellerReturnMatch.id, {
-        "Availability Status": { name: "Reserved" },
+        "Availability Status": "Reserved",
         "Selling Price": offer,
         "Selling Method": "Plug & Play",
       });
