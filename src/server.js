@@ -40,17 +40,39 @@ async function processWebhookPayloads() {
   for (const payload of data.payloads || []) {
     const changedTables = payload.changedTablesById || {};
 
-    for (const [tableId, tableChange] of Object.entries(changedTables)) {
+    for (const tableChange of Object.values(changedTables)) {
       const createdRecords = tableChange.createdRecordsById || {};
+      const changedRecords = tableChange.changedRecordsById || {};
 
       for (const recordId of Object.keys(createdRecords)) {
-        await processCreatedRecord(recordId);
+        await processRecord(recordId, "created");
+      }
+
+      for (const recordId of Object.keys(changedRecords)) {
+        await processRecord(recordId, "changed");
       }
     }
   }
 
   cursor = data.cursor;
   console.log(`✅ Cursor updated to ${cursor}`);
+}
+
+async function processRecord(recordId, eventType) {
+  for (const automation of automations) {
+    if (
+      automation.eventTypes &&
+      !automation.eventTypes.includes(eventType)
+    ) {
+      continue;
+    }
+
+    const record = await airtable.getRecord(automation.tableName, recordId);
+
+    if (await automation.shouldRun(record)) {
+      await automation.run(record, { airtable, eventType });
+    }
+  }
 }
 
 async function processCreatedRecord(recordId) {
