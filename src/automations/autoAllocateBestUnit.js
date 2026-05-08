@@ -67,7 +67,7 @@ export const autoAllocateBestUnit = {
 
     if ((!orderSKU && !orderSoftSKU) || !orderSize || !clientId) {
       await ctx.airtable.updateRecord(this.tableName, order.id, {
-        "Fulfillment Status": { name: "Missing Data" },
+        "Fulfillment Status": "Missing Data",
         Notes: "Missing SKU/Soft SKU, Size, or Client",
         auto_allocate_attempted_at: new Date().toISOString(),
       });
@@ -110,7 +110,7 @@ export const autoAllocateBestUnit = {
 
       await ctx.airtable.updateRecord(this.tableName, order.id, {
         "Linked Inventory Unit": [{ id: sameSellerReturnMatch.id }],
-        "Fulfillment Status": { name: "Allocated" },
+        "Fulfillment Status": "Allocated",
         "Final Buying Price": offer,
         Notes: "Allocated directly to matching Return Service seller item",
         auto_allocate_attempted_at: new Date().toISOString(),
@@ -119,7 +119,7 @@ export const autoAllocateBestUnit = {
       await ctx.airtable.updateRecord("Inventory Units", sameSellerReturnMatch.id, {
         "Availability Status": { name: "Reserved" },
         "Selling Price": offer,
-        "Selling Method": { name: "Plug & Play" },
+        "Selling Method": "Plug & Play",
       });
 
       return;
@@ -197,7 +197,7 @@ export const autoAllocateBestUnit = {
 
       await ctx.airtable.updateRecord(this.tableName, order.id, {
         "Linked Inventory Unit": [{ id: bestUnit.id }],
-        "Fulfillment Status": { name: "Allocated" },
+        "Fulfillment Status": "Allocated",
         "Final Buying Price": bestFinalPrice,
         Notes: "Allocated from inventory based on best profit (stored net)",
         auto_allocate_attempted_at: new Date().toISOString(),
@@ -206,9 +206,9 @@ export const autoAllocateBestUnit = {
       const typeName = getSelectName(bestUnit.fields["Type"]);
 
       const invUpdate = {
-        "Availability Status": { name: "Reserved" },
+        "Availability Status": "Reserved",
         "Selling Price": bestFinalPrice,
-        "Selling Method": { name: "Plug & Play" },
+        "Selling Method": "Plug & Play",
       };
 
       if (typeName === "Consignment" || typeName === "Partner Consignment") {
@@ -311,7 +311,7 @@ async function handleOutsourceFallback({
   }
 
   await ctx.airtable.updateRecord("Unfulfilled Orders Log", order.id, {
-    "Fulfillment Status": { name: "Outsource" },
+    "Fulfillment Status": "Outsource",
     Notes: partnerHasStock
       ? "No in-house match. Partner stock > 0 found → webhook sent to partners unless Store is blocked."
       : "No in-house match and no partner stock available or Partner Stock Level ≤ 0.",
