@@ -7,12 +7,14 @@ import {
   updateRecord,
   listRecords,
   createRecord,
+  getAutomationState,
+  setAutomationState,
 } from "./lib/airtable.js";
 
 const app = express();
 app.use(express.json());
 
-let cursor = Number(process.env.AIRTABLE_CURSOR || 1);
+let cursor = null;
 let isProcessing = false;
 
 const airtable = {
@@ -128,6 +130,21 @@ function hasRelevantAutomationForChange(tableName, eventType, changedFieldNames)
   });
 }
 
+async function loadCursor() {
+  const state = await getAutomationState("airtable_cursor");
+  cursor = String(state?.fields?.Value || "1");
+
+  console.log(`📍 Loaded Airtable cursor: ${cursor}`);
+}
+
+async function saveCursor(newCursor) {
+  cursor = String(newCursor);
+
+  await setAutomationState("airtable_cursor", cursor);
+
+  console.log(`💾 Saved Airtable cursor: ${cursor}`);
+}
+
 async function processWebhookPayloads() {
   const data = await getWebhookPayloads(cursor);
 
@@ -201,7 +218,7 @@ async function processWebhookPayloads() {
     }
   }
 
-  cursor = data.cursor;
+  await saveCursor(data.cursor);
   console.log(`✅ Cursor updated to ${cursor}`);
 }
 
@@ -277,6 +294,7 @@ async function processRecord(recordId, eventType, changedTableName, changedField
 
 const port = process.env.PORT || 3000;
 
-app.listen(port, () => {
+app.listen(port, async () => {
+  await loadCursor();
   console.log(`Automation engine listening on port ${port}`);
 });
