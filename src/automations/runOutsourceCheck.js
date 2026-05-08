@@ -16,24 +16,19 @@ export const runOutsourceCheck = {
   async shouldRun(record) {
     const f = record.fields;
 
+    const fulfillmentStatus = getStatusName(f["Fulfillment Status"]);
     const readyForOutsource = Number(f["Ready for Outsource"]) === 1;
-    const fulfillmentStatus =
-      typeof f["Fulfillment Status"] === "string"
-        ? f["Fulfillment Status"]
-        : f["Fulfillment Status"]?.name;
+    const stockxDone = getStatusName(f["StockX Price Check Status"]) === "Done";
+    const goatDone = getStatusName(f["GOAT Price Check Status"]) === "Done";
+    const startedAt = f["outsource_check_started_at"];
 
-    const stockxDone =
-      getStatusName(f["StockX Price Check Status"]) === "Done";
-
-    const goatDone =
-      getStatusName(f["GOAT Price Check Status"]) === "Done";
+    if (fulfillmentStatus !== "Outsource") {
+      return false;
+    }
 
     return (
-      readyForOutsource ||
-      (
-        fulfillmentStatus === "Outsource" &&
-        (stockxDone || goatDone)
-      )
+      (readyForOutsource && !startedAt) ||
+      (startedAt && (stockxDone || goatDone))
     );
   },
 
@@ -41,8 +36,9 @@ export const runOutsourceCheck = {
     const f = record.fields;
 
     const readyForOutsource = Number(f["Ready for Outsource"]) === 1;
+    const startedAt = f["outsource_check_started_at"];
 
-    if (readyForOutsource) {
+    if (readyForOutsource && !startedAt) {
       await ctx.airtable.updateRecord(TABLE_NAME, record.id, {
         "Most Valid Sourcing": null,
         "GOAT Checked Price": null,
@@ -50,6 +46,7 @@ export const runOutsourceCheck = {
         "Dewu Checked Price": null,
         "GOAT Price Check Status": null,
         "StockX Price Check Status": null,
+        "outsource_check_started_at": new Date().toISOString(),
       });
 
       console.log(`✅ Sourcing fields reset for ${record.id}`);
