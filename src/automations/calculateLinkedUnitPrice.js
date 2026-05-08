@@ -19,6 +19,14 @@ export const calculateLinkedUnitPrice = {
     const linkedInventoryUnit = f["Linked Inventory Unit"];
     const fulfillmentStatus = getSelectName(f["Fulfillment Status"]);
 
+    console.log("calculateLinkedUnitPrice debug", {
+      recordId: record.id,
+      linkedInventoryUnit,
+      hasLinked: hasLinkedRecord(linkedInventoryUnit),
+      fulfillmentStatus,
+      calculatedAt: f["linked_unit_price_calculated_at"],
+    });
+
     return (
       hasLinkedRecord(linkedInventoryUnit) &&
       [
@@ -218,7 +226,7 @@ export const calculateLinkedUnitPrice = {
 
 async function updateAllocated(order, unitId, finalPrice, ctx, { notes }) {
   await ctx.airtable.updateRecord("Unfulfilled Orders Log", order.id, {
-    "Fulfillment Status": { name: "Allocated" },
+    "Fulfillment Status": "Allocated",
     "Final Buying Price": finalPrice,
     Notes: notes,
     linked_unit_price_calculated_at: new Date().toISOString(),
@@ -226,7 +234,7 @@ async function updateAllocated(order, unitId, finalPrice, ctx, { notes }) {
 
   await ctx.airtable.updateRecord("Inventory Units", unitId, {
     "Selling Price": finalPrice,
-    "Selling Method": { name: "Plug & Play" },
+    "Selling Method": "Plug & Play",
   });
 }
 
