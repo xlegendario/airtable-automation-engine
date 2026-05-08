@@ -113,3 +113,23 @@ export async function createRecord(tableName, fields) {
 
   return res.json();
 }
+
+export async function getAutomationState(name) {
+  const records = await listRecords("Automation State", {
+    filterByFormula: `{Name} = "${name}"`,
+  });
+
+  return records[0] || null;
+}
+
+export async function setAutomationState(name, value) {
+  const existing = await getAutomationState(name);
+
+  if (!existing) {
+    throw new Error(`Automation State record not found: ${name}`);
+  }
+
+  return updateRecord("Automation State", existing.id, {
+    Value: String(value),
+  });
+}
