@@ -7,16 +7,20 @@ export const unfulfilledOrderAllocated = {
 
   async shouldRun(record) {
     const fields = record.fields;
-
+  
     const fulfillmentStatus = getFirstValue(fields["Fulfillment Status"]);
     const linkedInventoryUnit = fields["Linked Inventory Unit"];
     const source = fields["Source"];
-
+  
+    const calculatedAt = fields["linked_unit_price_calculated_at"];
+    const autoAttemptedAt = fields["auto_allocate_attempted_at"];
+  
     return (
       fulfillmentStatus === "Allocated" &&
       linkedInventoryUnit &&
       source &&
-      !fields["allocated_update_sent_at"]
+      !fields["allocated_update_sent_at"] &&
+      (calculatedAt || autoAttemptedAt)
     );
   },
 
