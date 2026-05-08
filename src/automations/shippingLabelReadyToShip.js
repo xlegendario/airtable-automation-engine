@@ -28,7 +28,7 @@ export const shippingLabelReadyToShip = {
     updatesForOrders.push({
       id: record.id,
       fields: {
-        "Fulfillment Status": { name: "Ready to Ship" },
+        "Fulfillment Status": "Ready to Ship",
       },
     });
 
@@ -39,7 +39,7 @@ export const shippingLabelReadyToShip = {
         updatesForInventory.push({
           id: linked.id,
           fields: {
-            "Availability Status": { name: "Sold" },
+            "Availability Status": "Sold",
           },
         });
       }
@@ -65,7 +65,7 @@ export const shippingLabelReadyToShip = {
           updatesForOrders.push({
             id: related.id,
             fields: {
-              "Fulfillment Status": { name: "Ready to Ship" },
+              "Fulfillment Status": "Ready to Ship",
             },
           });
 
@@ -76,7 +76,7 @@ export const shippingLabelReadyToShip = {
               updatesForInventory.push({
                 id: inv.id,
                 fields: {
-                  "Availability Status": { name: "Sold" },
+                  "Availability Status": "Sold",
                 },
               });
             }
