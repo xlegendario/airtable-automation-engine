@@ -130,6 +130,17 @@ function hasRelevantAutomationForChange(tableName, eventType, changedFieldNames)
 
 async function processWebhookPayloads() {
   const data = await getWebhookPayloads(cursor);
+  
+    console.log("Webhook payload debug", {
+    oldCursor: cursor,
+    newCursor: data.cursor,
+    payloadCount: data.payloads?.length || 0,
+  });
+  
+  for (const payload of data.payloads || []) {
+    console.log("Payload keys", Object.keys(payload));
+    console.log("Payload preview", JSON.stringify(payload).slice(0, 1000));
+  }
 
   for (const payload of data.payloads || []) {
     const changedTables = payload.changedTablesById || {};
