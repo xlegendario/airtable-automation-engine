@@ -15,6 +15,17 @@ export const autoAllocateBestUnit = {
   name: "autoAllocateBestUnit",
   tableName: "Unfulfilled Orders Log",
   eventTypes: ["created", "changed"],
+  watchFields: [
+    "Fulfillment Status",
+    "Match Risk Level",
+    "Linked Inventory Unit",
+    "SKU",
+    "SKU (Soft)",
+    "Size",
+    "Client",
+    "Target Buying Price",
+    "Maximum Buying Price",
+  ],
 
   async shouldRun(record) {
     const f = record.fields;
