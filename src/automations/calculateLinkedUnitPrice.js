@@ -12,6 +12,20 @@ export const calculateLinkedUnitPrice = {
   name: "calculateLinkedUnitPrice",
   tableName: "Unfulfilled Orders Log",
   eventTypes: ["changed"],
+  watchFields: [
+    "Linked Inventory Unit",
+    "Fulfillment Status",
+    "Offer Accepted?",
+    "Offer To Store",
+    "Custom Offer",
+    "Offer VAT Type",
+    "Client Country",
+    "Lowest Offer",
+    "Final Outsource Buying Price",
+    "Final Outsource Buying Price (VAT 0%)",
+    "Target Buying Price",
+    "Maximum Buying Price",
+  ],
 
   async shouldRun(record) {
     const f = record.fields;
