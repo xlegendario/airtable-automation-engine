@@ -4,6 +4,7 @@ import { autoAllocateBestUnit } from "./automations/autoAllocateBestUnit.js";
 import { calculateLinkedUnitPrice } from "./automations/calculateLinkedUnitPrice.js";
 import { setOutsourceStartTime } from "./automations/setOutsourceStartTime.js";
 import { splitQuantityOrders } from "./automations/splitQuantityOrders.js";
+import { shippingLabelReadyToShip } from "./automations/shippingLabelReadyToShip.js";
 
 export const automations = [
   unfulfilledOrderCreated,
@@ -12,4 +13,5 @@ export const automations = [
   calculateLinkedUnitPrice,
   setOutsourceStartTime,
   splitQuantityOrders,
+  shippingLabelReadyToShip,
 ];
