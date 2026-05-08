@@ -143,13 +143,20 @@ async function processWebhookPayloads() {
     for (const [tableId, tableChange] of Object.entries(changedTables)) {
       const tableInfo = await getTableInfoById(tableId);
 
-      const createdRecords = tableChange.createdRecordsById || {};
-
+      let createdRecords = {
+        ...(tableChange.createdRecordsById || {}),
+      };
+      
       let changedRecords = {
         ...(tableChange.changedRecordsById || {}),
       };
-
+      
       for (const viewChange of Object.values(tableChange.changedViewsById || {})) {
+        Object.assign(
+          createdRecords,
+          viewChange.createdRecordsById || {}
+        );
+      
         Object.assign(
           changedRecords,
           viewChange.changedRecordsById || {}
