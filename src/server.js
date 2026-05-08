@@ -1,7 +1,13 @@
 import "dotenv/config";
 import express from "express";
 import { automations } from "./automationRegistry.js";
-import { getWebhookPayloads, getRecord, updateRecord, listRecords } from "./lib/airtable.js";
+import {
+  getWebhookPayloads,
+  getRecord,
+  updateRecord,
+  listRecords,
+  createRecord,
+} from "./lib/airtable.js";
 
 const app = express();
 app.use(express.json());
@@ -13,6 +19,7 @@ const airtable = {
   getRecord,
   updateRecord,
   listRecords,
+  createRecord,
 };
 
 app.get("/", (req, res) => {
