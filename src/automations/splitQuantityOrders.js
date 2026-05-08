@@ -29,7 +29,7 @@ const FIELDS_TO_COPY = [
 export const splitQuantityOrders = {
   name: "splitQuantityOrders",
   tableName: TABLE_NAME,
-  eventTypes: ["created", "changed"],
+  eventTypes: ["created"],
 
   async shouldRun(record) {
     const quantity = getNumber(record.fields["Quantity"]);
