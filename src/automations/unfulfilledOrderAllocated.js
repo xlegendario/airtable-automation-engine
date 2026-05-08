@@ -4,6 +4,13 @@ export const unfulfilledOrderAllocated = {
   name: "unfulfilledOrderAllocated",
   tableName: "Unfulfilled Orders Log",
   eventTypes: ["changed"],
+  watchFields: [
+    "Fulfillment Status",
+    "Linked Inventory Unit",
+    "Source",
+    "linked_unit_price_calculated_at",
+    "auto_allocate_attempted_at",
+  ],
 
   async shouldRun(record) {
     const fields = record.fields;
