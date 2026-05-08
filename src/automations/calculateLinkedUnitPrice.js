@@ -250,8 +250,9 @@ export const calculateLinkedUnitPrice = {
         linked_unit_price_calculated_at: new Date().toISOString(),
       });
     
-      console.log("❌ Failed after 3 attempts.");
-    },
+    console.log("❌ Failed after 3 attempts.");
+    }
+  },
 };
 
 async function updateAllocated(order, unitId, finalPrice, ctx, { notes }) {
