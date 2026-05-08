@@ -53,3 +53,44 @@ export async function updateRecord(tableName, recordId, fields) {
 
   return res.json();
 }
+
+export async function listRecords(tableName, params = {}) {
+  const allRecords = [];
+  let offset;
+
+  do {
+    const url = new URL(
+      `${AIRTABLE_API}/${process.env.AIRTABLE_BASE_ID}/${encodeURIComponent(tableName)}`
+    );
+
+    if (params.fields) {
+      for (const field of params.fields) {
+        url.searchParams.append("fields[]", field);
+      }
+    }
+
+    if (params.filterByFormula) {
+      url.searchParams.set("filterByFormula", params.filterByFormula);
+    }
+
+    if (offset) {
+      url.searchParams.set("offset", offset);
+    }
+
+    const res = await fetch(url, {
+      headers: {
+        Authorization: `Bearer ${process.env.AIRTABLE_TOKEN}`,
+      },
+    });
+
+    if (!res.ok) {
+      throw new Error(`Airtable listRecords failed: ${res.status} ${await res.text()}`);
+    }
+
+    const data = await res.json();
+    allRecords.push(...(data.records || []));
+    offset = data.offset;
+  } while (offset);
+
+  return allRecords;
+}
