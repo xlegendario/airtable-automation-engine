@@ -14,7 +14,7 @@ const PARTNER_STOCK_WEBHOOK_URL = "https://hook.eu2.make.com/gjerr6cb7lx9a8rhybo
 export const autoAllocateBestUnit = {
   name: "autoAllocateBestUnit",
   tableName: "Unfulfilled Orders Log",
-  eventTypes: ["changed"],
+  eventTypes: ["created", "changed"],
 
   async shouldRun(record) {
     const f = record.fields;
