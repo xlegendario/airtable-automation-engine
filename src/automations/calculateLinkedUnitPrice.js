@@ -142,13 +142,12 @@ export const calculateLinkedUnitPrice = {
       }
     }
 
-    // Normal calculation with retry/refetch (matches Airtable automation behavior)
+    // Normal calculation with retry/refetch
     let success = false;
     
     for (let attempt = 1; attempt <= 3; attempt++) {
       console.log(`🔄 Pricing attempt ${attempt}`);
     
-      // Re-fetch fresh order each attempt
       const freshOrder = await ctx.airtable.getRecord(
         "Unfulfilled Orders Log",
         order.id
@@ -159,7 +158,6 @@ export const calculateLinkedUnitPrice = {
       const targetPrice = getNumber(freshFields["Target Buying Price"]);
       const maxPrice = getNumber(freshFields["Maximum Buying Price"]);
     
-      // Re-fetch fresh inventory unit too
       const freshUnit = await ctx.airtable.getRecord(
         "Inventory Units",
         unitId
@@ -171,14 +169,6 @@ export const calculateLinkedUnitPrice = {
       const min = getNumber(uf["Minimum Selling Price"]);
       const cost = getNumber(uf["Purchase Price"]);
     
-      console.log("pricing debug", {
-        targetPrice,
-        maxPrice,
-        ideal,
-        min,
-        cost,
-      });
-    
       if (
         ideal == null ||
         min == null ||
@@ -186,9 +176,8 @@ export const calculateLinkedUnitPrice = {
         targetPrice == null ||
         maxPrice == null
       ) {
-        console.log("⚠️ Missing fields, retrying...");
-    
         if (attempt < 3) {
+          console.log("⚠️ Missing price fields, retrying...");
           await new Promise((r) => setTimeout(r, 1000));
           continue;
         }
@@ -204,12 +193,10 @@ export const calculateLinkedUnitPrice = {
     
       let candidate = null;
     
-      // 1) If target at/above ideal → use target capped to max
       if (targetPrice >= ideal) {
         candidate = Math.min(targetPrice, maxPrice);
       }
     
-      // 2) If target between min and ideal
       if (candidate === null && targetPrice >= min) {
         let mid = (targetPrice + ideal) / 2;
     
@@ -226,7 +213,6 @@ export const calculateLinkedUnitPrice = {
         candidate = mid;
       }
     
-      // 3) Fallback using max price
       if (candidate === null) {
         if (maxPrice >= ideal) {
           candidate = (maxPrice + ideal) / 2;
@@ -235,7 +221,6 @@ export const calculateLinkedUnitPrice = {
         }
       }
     
-      // 4) Validate
       if (
         candidate != null &&
         candidate <= maxPrice + EPS &&
@@ -248,14 +233,12 @@ export const calculateLinkedUnitPrice = {
         });
     
         console.log("✅ Records updated successfully.");
-    
         success = true;
         break;
       }
     
-      console.log("⚠️ Invalid candidate price, retrying...");
-    
       if (attempt < 3) {
+        console.log("⚠️ Invalid candidate price, retrying...");
         await new Promise((r) => setTimeout(r, 1000));
       }
     }
@@ -268,10 +251,7 @@ export const calculateLinkedUnitPrice = {
       });
     
       console.log("❌ Failed after 3 attempts.");
-    }
-
-    console.log("❌ Failed to calculate valid final price.");
-  },
+    },
 };
 
 async function updateAllocated(order, unitId, finalPrice, ctx, { notes }) {
