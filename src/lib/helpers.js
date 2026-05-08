@@ -27,7 +27,24 @@ export function getNumber(value) {
 }
 
 export function getLinkedId(value) {
-  if (Array.isArray(value) && value[0]?.id) return value[0].id;
+  if (!value) return null;
+
+  if (Array.isArray(value) && value.length) {
+    const first = value[0];
+
+    if (typeof first === "object" && first?.id) {
+      return first.id;
+    }
+
+    if (typeof first === "string") {
+      return first;
+    }
+  }
+
+  if (typeof value === "object" && value?.id) {
+    return value.id;
+  }
+
   return null;
 }
 
