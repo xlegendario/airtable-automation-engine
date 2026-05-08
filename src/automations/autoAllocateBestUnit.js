@@ -216,7 +216,7 @@ export const autoAllocateBestUnit = {
 
         invUpdate["Payment Note"] =
           typeof hardCost === "number" ? `€${hardCost.toFixed(2)}` : "(unknown)";
-        invUpdate["Payment Status"] = { name: "To Pay" };
+        invUpdate["Payment Status"] = "To Pay";
         invUpdate["Purchase Date"] = new Date().toISOString();
 
         if (typeName === "Consignment") {
