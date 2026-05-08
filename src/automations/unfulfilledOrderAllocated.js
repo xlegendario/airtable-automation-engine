@@ -35,7 +35,7 @@ export const unfulfilledOrderAllocated = {
       trigger_type: "allocated-update",
       store_name: storeName,
       shopify_order_number: fields["Shopify Order Number"],
-      product_name: fields["Shopify Product Name"],
+      product_name: getFirstValue(fields["Shopify Product Name"]),
       size: fields["Size"],
       sku: finalSku,
       source: finalSource,
