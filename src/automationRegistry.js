@@ -7,6 +7,7 @@ import { splitQuantityOrders } from "./automations/splitQuantityOrders.js";
 import { shippingLabelReadyToShip } from "./automations/shippingLabelReadyToShip.js";
 import { sendShippingLabelToDiscord } from "./automations/sendShippingLabelToDiscord.js";
 import { updateQuickDealEmbed } from "./automations/updateQuickDealEmbed.js";
+import { runOutsourceCheck } from "./automations/runOutsourceCheck.js";
 
 export const automations = [
   unfulfilledOrderCreated,
@@ -18,4 +19,5 @@ export const automations = [
   shippingLabelReadyToShip,
   sendShippingLabelToDiscord,
   updateQuickDealEmbed,
+  runOutsourceCheck,
 ];
