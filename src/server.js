@@ -92,7 +92,12 @@ async function processRecord(recordId, eventType) {
 
     if (shouldRun) {
       console.log(`🚀 Running automation: ${automation.name}`);
-      await automation.run(record, { airtable, eventType });
+    
+      try {
+        await automation.run(record, { airtable, eventType });
+      } catch (err) {
+        console.error(`❌ Automation failed: ${automation.name}`, err);
+      }
     }
   }
 }
