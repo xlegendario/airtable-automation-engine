@@ -250,7 +250,15 @@ async function processRecord(recordId, eventType, changedTableName, changedField
       changedFieldNames,
     });
     
-    const record = await airtable.getRecord(automation.tableName, recordId);
+    let record;
+
+    try {
+      record = await airtable.getRecord(automation.tableName, recordId);
+    } catch (err) {
+      console.error(`⚠️ Could not fetch record ${recordId} for ${automation.name}, skipping`, err.message);
+      continue;
+    }
+    
     const shouldRun = await automation.shouldRun(record);
 
     console.log(`   shouldRun=${shouldRun}`);
