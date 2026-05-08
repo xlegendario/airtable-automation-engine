@@ -6,6 +6,7 @@ import { setOutsourceStartTime } from "./automations/setOutsourceStartTime.js";
 import { splitQuantityOrders } from "./automations/splitQuantityOrders.js";
 import { shippingLabelReadyToShip } from "./automations/shippingLabelReadyToShip.js";
 import { sendShippingLabelToDiscord } from "./automations/sendShippingLabelToDiscord.js";
+import { updateQuickDealEmbed } from "./automations/updateQuickDealEmbed.js";
 
 export const automations = [
   unfulfilledOrderCreated,
@@ -16,4 +17,5 @@ export const automations = [
   splitQuantityOrders,
   shippingLabelReadyToShip,
   sendShippingLabelToDiscord,
+  updateQuickDealEmbed,
 ];
