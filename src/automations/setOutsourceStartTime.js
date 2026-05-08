@@ -4,6 +4,9 @@ export const setOutsourceStartTime = {
   name: "setOutsourceStartTime",
   tableName: "Unfulfilled Orders Log",
   eventTypes: ["changed"],
+  watchFields: [
+    "Fulfillment Status",
+  ],
 
   async shouldRun(record) {
     const fulfillmentStatus = getSelectName(
