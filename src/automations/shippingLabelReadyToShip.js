@@ -9,6 +9,13 @@ export const shippingLabelReadyToShip = {
   name: "shippingLabelReadyToShip",
   tableName: TABLE_NAME,
   eventTypes: ["changed"],
+  watchFields: [
+    "Shipping Label",
+    "Fulfillment Status",
+    "Linked Inventory Unit",
+    "Shopify Order ID",
+    "Outsourced?",
+  ],
 
   async shouldRun(record) {
     const f = record.fields;
