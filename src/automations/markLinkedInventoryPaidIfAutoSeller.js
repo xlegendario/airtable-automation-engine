@@ -22,18 +22,21 @@ export const markLinkedInventoryPaidIfAutoSeller = {
   ],
 
   async shouldRun(record) {
-    const linkedInventoryUnit = record.fields["Linked Inventory Unit"];
-
-    return (
-      Array.isArray(linkedInventoryUnit) &&
-      linkedInventoryUnit.length > 0 &&
-      !!linkedInventoryUnit[0]?.id
+    const inventoryUnitId = getLinkedRecordId(
+      record.fields["Linked Inventory Unit"]
     );
+
+    return !!inventoryUnitId;
   },
 
   async run(record, ctx) {
-    const linkedInventoryUnit = record.fields["Linked Inventory Unit"];
-    const inventoryUnitId = linkedInventoryUnit[0].id;
+    const inventoryUnitId = getLinkedRecordId(
+      record.fields["Linked Inventory Unit"]
+    );
+
+    if (!inventoryUnitId) {
+      return;
+    }
 
     const unit = await ctx.airtable.getRecord(
       INVENTORY_TABLE_NAME,
@@ -55,9 +58,7 @@ export const markLinkedInventoryPaidIfAutoSeller = {
     }
 
     if (currentPaymentStatus === "Paid") {
-      console.log(
-        `⏭️ Inventory Unit ${inventoryUnitId} already Paid`
-      );
+      console.log(`⏭️ Inventory Unit ${inventoryUnitId} already Paid`);
       return;
     }
 
@@ -70,3 +71,21 @@ export const markLinkedInventoryPaidIfAutoSeller = {
     );
   },
 };
+
+function getLinkedRecordId(value) {
+  if (!Array.isArray(value) || value.length === 0) {
+    return null;
+  }
+
+  const first = value[0];
+
+  if (typeof first === "string") {
+    return first;
+  }
+
+  if (first && typeof first === "object" && first.id) {
+    return first.id;
+  }
+
+  return null;
+}
