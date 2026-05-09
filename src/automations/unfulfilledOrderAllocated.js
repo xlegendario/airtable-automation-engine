@@ -16,14 +16,21 @@ export const unfulfilledOrderAllocated = {
     const fields = record.fields;
   
     const fulfillmentStatus = getFirstValue(fields["Fulfillment Status"]);
+  
     const linkedInventoryUnit = fields["Linked Inventory Unit"];
     const source = fields["Source"];
   
     const calculatedAt = fields["linked_unit_price_calculated_at"];
     const autoAttemptedAt = fields["auto_allocate_attempted_at"];
   
+    const allowedStatuses = [
+      "Allocated",
+      "Requested Label",
+      "Ready to Ship"
+    ];
+  
     return (
-      fulfillmentStatus === "Allocated" &&
+      allowedStatuses.includes(fulfillmentStatus) &&
       linkedInventoryUnit &&
       source &&
       !fields["allocated_update_sent_at"] &&
