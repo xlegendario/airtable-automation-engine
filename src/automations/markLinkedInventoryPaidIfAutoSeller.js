@@ -43,7 +43,7 @@ export const markLinkedInventoryPaidIfAutoSeller = {
       inventoryUnitId
     );
 
-    const sellerIdName = getFirstValue(unit.fields["Seller ID Name"]);
+    const sellerIdName = getFirstValue(unit.fields["Seller ID (Lookup)"]);
     const currentPaymentStatus = getFirstValue(unit.fields["Payment Status"]);
 
     const isAutoPaidSeller = AUTO_PAID_SELLERS.some((sellerId) =>
