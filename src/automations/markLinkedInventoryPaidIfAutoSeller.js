@@ -63,7 +63,7 @@ export const markLinkedInventoryPaidIfAutoSeller = {
     }
 
     await ctx.airtable.updateRecord(INVENTORY_TABLE_NAME, inventoryUnitId, {
-      "Payment Status": { name: "Paid" },
+      "Payment Status": "Paid",
     });
 
     console.log(
