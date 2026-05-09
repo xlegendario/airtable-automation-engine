@@ -20,7 +20,7 @@ export const runOutsourceCheck = {
     const readyForOutsource = Number(f["Ready for Outsource"]) === 1;
     const stockxDone = getStatusName(f["StockX Price Check Status"]) === "Done";
     const goatDone = getStatusName(f["GOAT Price Check Status"]) === "Done";
-    const startedAt = f["outsource_check_started_at"];
+    const startedAt = f["Sourcing Checked At"];
 
     if (fulfillmentStatus !== "Outsource") {
       return false;
@@ -36,7 +36,7 @@ export const runOutsourceCheck = {
     const f = record.fields;
 
     const readyForOutsource = Number(f["Ready for Outsource"]) === 1;
-    const startedAt = f["outsource_check_started_at"];
+    const startedAt = f["Sourcing Checked At"];
 
     if (readyForOutsource && !startedAt) {
       await ctx.airtable.updateRecord(TABLE_NAME, record.id, {
@@ -46,7 +46,7 @@ export const runOutsourceCheck = {
         "Dewu Checked Price": null,
         "GOAT Price Check Status": null,
         "StockX Price Check Status": null,
-        "outsource_check_started_at": new Date().toISOString(),
+        "Sourcing Checked At": new Date().toISOString(),
       });
 
       console.log(`✅ Sourcing fields reset for ${record.id}`);
