@@ -13,6 +13,7 @@ import { disablePartnerDealButtons } from "./automations/disablePartnerDealButto
 import { disableSellerOfferButtons } from "./automations/disableSellerOfferButtons.js";
 import { setOfferingStartedTimestamp } from "./automations/setOfferingStartedTimestamp.js";
 import { syncLowestOffer } from "./automations/syncLowestOffer.js";
+import { setPartnerOrSeller } from "./automations/setPartnerOrSeller.js";
 
 export const automations = [
   unfulfilledOrderCreated,
@@ -30,4 +31,5 @@ export const automations = [
   disableSellerOfferButtons,
   setOfferingStartedTimestamp,
   syncLowestOffer,
+  setPartnerOrSeller,
 ];
