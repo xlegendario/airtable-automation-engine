@@ -11,6 +11,7 @@ import { runOutsourceCheck } from "./automations/runOutsourceCheck.js";
 import { disableClaimDealButtons } from "./automations/disableClaimDealButtons.js";
 import { disablePartnerDealButtons } from "./automations/disablePartnerDealButtons.js";
 import { disableSellerOfferButtons } from "./automations/disableSellerOfferButtons.js";
+import { setOfferingStartedTimestamp } from "./automations/setOfferingStartedTimestamp.js";
 
 export const automations = [
   unfulfilledOrderCreated,
@@ -26,4 +27,5 @@ export const automations = [
   disableClaimDealButtons,
   disablePartnerDealButtons,
   disableSellerOfferButtons,
+  setOfferingStartedTimestamp,
 ];
