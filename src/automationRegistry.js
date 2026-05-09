@@ -10,6 +10,7 @@ import { updateQuickDealEmbed } from "./automations/updateQuickDealEmbed.js";
 import { runOutsourceCheck } from "./automations/runOutsourceCheck.js";
 import { disableClaimDealButtons } from "./automations/disableClaimDealButtons.js";
 import { disablePartnerDealButtons } from "./automations/disablePartnerDealButtons.js";
+import { disableSellerOfferButtons } from "./automations/disableSellerOfferButtons.js";
 
 export const automations = [
   unfulfilledOrderCreated,
@@ -24,4 +25,5 @@ export const automations = [
   runOutsourceCheck,
   disableClaimDealButtons,
   disablePartnerDealButtons,
+  disableSellerOfferButtons,
 ];
