@@ -8,6 +8,7 @@ import { shippingLabelReadyToShip } from "./automations/shippingLabelReadyToShip
 import { sendShippingLabelToDiscord } from "./automations/sendShippingLabelToDiscord.js";
 import { updateQuickDealEmbed } from "./automations/updateQuickDealEmbed.js";
 import { runOutsourceCheck } from "./automations/runOutsourceCheck.js";
+import { disableClaimDealButtons } from "./automations/disableClaimDealButtons.js";
 
 export const automations = [
   unfulfilledOrderCreated,
@@ -20,4 +21,5 @@ export const automations = [
   sendShippingLabelToDiscord,
   updateQuickDealEmbed,
   runOutsourceCheck,
+  disableClaimDealButtons,
 ];
