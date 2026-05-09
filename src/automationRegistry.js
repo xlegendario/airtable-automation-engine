@@ -15,6 +15,7 @@ import { setOfferingStartedTimestamp } from "./automations/setOfferingStartedTim
 import { syncLowestOffer } from "./automations/syncLowestOffer.js";
 import { setPartnerOrSeller } from "./automations/setPartnerOrSeller.js";
 import { sendShipmentDelayWebhook } from "./automations/sendShipmentDelayWebhook.js";
+import { markInventoryPaidForAutoPaidSellers } from "./automations/markInventoryPaidForAutoPaidSellers.js";
 
 export const automations = [
   unfulfilledOrderCreated,
@@ -34,4 +35,5 @@ export const automations = [
   syncLowestOffer,
   setPartnerOrSeller,
   sendShipmentDelayWebhook,
+  markInventoryPaidForAutoPaidSellers,
 ];
