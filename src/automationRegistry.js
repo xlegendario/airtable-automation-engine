@@ -12,6 +12,7 @@ import { disableClaimDealButtons } from "./automations/disableClaimDealButtons.j
 import { disablePartnerDealButtons } from "./automations/disablePartnerDealButtons.js";
 import { disableSellerOfferButtons } from "./automations/disableSellerOfferButtons.js";
 import { setOfferingStartedTimestamp } from "./automations/setOfferingStartedTimestamp.js";
+import { syncLowestOffer } from "./automations/syncLowestOffer.js";
 
 export const automations = [
   unfulfilledOrderCreated,
@@ -28,4 +29,5 @@ export const automations = [
   disablePartnerDealButtons,
   disableSellerOfferButtons,
   setOfferingStartedTimestamp,
+  syncLowestOffer,
 ];
