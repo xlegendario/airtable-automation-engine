@@ -34,7 +34,7 @@ export const setPartnerOrSeller = {
     const choice = decidePartnerOrSeller(partnerVal, sellerVal);
 
     await ctx.airtable.updateRecord(TABLE_NAME, record.id, {
-      "Partner or Seller": choice ? { name: choice } : null,
+      "Partner or Seller": choice || null,
     });
 
     console.log(
