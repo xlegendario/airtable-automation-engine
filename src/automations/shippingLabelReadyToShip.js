@@ -23,7 +23,7 @@ export const shippingLabelReadyToShip = {
   
     return (
       !!f["Shipping Label"] &&
-      ["Allocated", "Awaiting Label"].includes(status)
+      ["Allocated", "Awaiting Label", "Requested Label"].includes(status)
     );
   },
 
@@ -62,7 +62,10 @@ export const shippingLabelReadyToShip = {
         const relatedRecords = await ctx.airtable.listRecords(TABLE_NAME, {
           filterByFormula: `AND(
             {Shopify Order ID} = "${String(shopifyOrderId).replace(/"/g, '\\"')}",
-            {Fulfillment Status} = "Awaiting Label",
+            OR(
+              {Fulfillment Status} = "Awaiting Label",
+              {Fulfillment Status} = "Requested Label"
+            ),
             NOT({Outsourced?})
           )`,
         });
