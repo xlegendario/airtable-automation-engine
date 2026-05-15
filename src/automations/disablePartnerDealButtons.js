@@ -27,7 +27,10 @@ export const disablePartnerDealButtons = {
       "Fulfilled",
       "Ready to Ship",
       "Awaiting Label",
+      "Requested Label",
       "Allocated",
+      "Found",
+      "Confirmed",
     ];
 
     return (
