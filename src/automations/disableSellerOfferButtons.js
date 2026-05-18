@@ -29,7 +29,7 @@ export const disableSellerOfferButtons = {
       "Awaiting Label",
       "Requested Label",
       "Allocated",
-      "Found"
+      "Found",
       "Confirmed",
     ];
 
