@@ -13,6 +13,7 @@ export const sendOfferRequestWebhook = {
     "Offer To Store",
     "Offer Sent?",
     "Estimated Time",
+    "offer_request_webhook_key",
   ],
 
   async shouldRun(record) {
@@ -20,16 +21,26 @@ export const sendOfferRequestWebhook = {
 
     const offerVatType = getFirstValue(f["Offer VAT Type"]);
     const offerToStore = getNumber(f["Offer To Store"]);
+    const estimatedTime = getNumber(f["Estimated Time"]);
     const offerSent = !!f["Offer Sent?"];
+
+    const currentKey = buildOfferWebhookKey({
+      offerVatType,
+      offerToStore,
+      estimatedTime,
+    });
+
+    const lastKey = getFirstValue(f["offer_request_webhook_key"]);
 
     return (
       !!offerVatType &&
       offerToStore != null &&
-      offerSent === true
+      offerSent === true &&
+      currentKey !== lastKey
     );
   },
 
-  async run(record) {
+  async run(record, ctx) {
     const f = record.fields;
 
     const offerVatType = getFirstValue(f["Offer VAT Type"]);
@@ -39,6 +50,12 @@ export const sendOfferRequestWebhook = {
     if (offerToStore == null) {
       throw new Error(`Offer To Store invalid/empty for ${record.id}`);
     }
+
+    const offerKey = buildOfferWebhookKey({
+      offerVatType,
+      offerToStore,
+      estimatedTime,
+    });
 
     const payload = {
       trigger_type: "offer-requests",
@@ -82,6 +99,18 @@ export const sendOfferRequestWebhook = {
       throw new Error(`Offer request webhook failed: ${res.status} ${text}`);
     }
 
+    await ctx.airtable.updateRecord(TABLE_NAME, record.id, {
+      offer_request_webhook_key: offerKey,
+    });
+
     console.log(`✅ Offer request webhook sent for ${record.id}`);
   },
 };
+
+function buildOfferWebhookKey({ offerVatType, offerToStore, estimatedTime }) {
+  return [
+    offerVatType || "",
+    offerToStore != null ? String(offerToStore) : "",
+    estimatedTime != null ? String(estimatedTime) : "",
+  ].join("|");
+}
