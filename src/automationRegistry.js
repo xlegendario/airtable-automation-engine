@@ -10,7 +10,6 @@ import { updateQuickDealEmbed } from "./automations/updateQuickDealEmbed.js";
 import { runOutsourceCheck } from "./automations/runOutsourceCheck.js";
 import { disableClaimDealButtons } from "./automations/disableClaimDealButtons.js";
 import { disableSellerOfferButtons } from "./automations/disableSellerOfferButtons.js";
-import { setOfferingStartedTimestamp } from "./automations/setOfferingStartedTimestamp.js";
 import { syncLowestOffer } from "./automations/syncLowestOffer.js";
 import { setPartnerOrSeller } from "./automations/setPartnerOrSeller.js";
 import { sendShipmentDelayWebhook } from "./automations/sendShipmentDelayWebhook.js";
@@ -30,7 +29,6 @@ export const automations = [
   runOutsourceCheck,
   disableClaimDealButtons,
   disableSellerOfferButtons,
-  setOfferingStartedTimestamp,
   syncLowestOffer,
   setPartnerOrSeller,
   sendShipmentDelayWebhook,
