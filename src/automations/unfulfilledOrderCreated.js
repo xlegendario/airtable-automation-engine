@@ -57,6 +57,7 @@ export const unfulfilledOrderCreated = {
 
     await ctx.airtable.updateRecord(this.tableName, record.id, {
       external_discord_sent_at: new Date().toISOString(),
+      "Automation Engine Enabled": true,
     });
 
     console.log(`✅ Sent Discord update for ${record.id}`);
