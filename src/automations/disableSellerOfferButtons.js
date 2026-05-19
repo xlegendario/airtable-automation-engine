@@ -31,6 +31,7 @@ export const disableSellerOfferButtons = {
       "Allocated",
       "Found",
       "Confirmed",
+      "Found & Tracked",
     ];
 
     return (
