@@ -10,6 +10,7 @@ import {
 const RETURN_SERVICE_WEBHOOK_URL = "https://hook.eu2.make.com/nnrdb2gn605shmf7yvc56sl0wnr1np2d";
 const CONSIGNMENT_WEBHOOK_URL = "https://hook.eu2.make.com/3eu7vi2nfgngstc98sclpul3r1gskiyy";
 const PARTNER_STOCK_WEBHOOK_URL = "https://hook.eu2.make.com/gjerr6cb7lx9a8rhyborqclngc68t9q7";
+const LOJIQ_WMS_BASE_URL = process.env.LOJIQ_WMS_BASE_URL;
 
 export const autoAllocateBestUnit = {
   name: "autoAllocateBestUnit",
@@ -127,7 +128,9 @@ export const autoAllocateBestUnit = {
         "Selling Price": offer,
         "Selling Method": "Plug & Play",
       });
-
+      
+      await requestLabelForAutoAllocatedInventory(order.id);
+      
       return;
     }
 
@@ -249,6 +252,9 @@ export const autoAllocateBestUnit = {
       }
 
       await ctx.airtable.updateRecord("Inventory Units", bestUnit.id, invUpdate);
+
+      await requestLabelForAutoAllocatedInventory(order.id);
+      
       return;
     }
 
@@ -388,4 +394,27 @@ function buildInventoryMatchFormula(orderSKU, orderSoftSKU, orderSize) {
     {Size} = "${escapeFormulaString(orderSize)}",
     {Availability Status} = "Available"
   )`;
+}
+
+async function requestLabelForAutoAllocatedInventory(recordId) {
+  if (!LOJIQ_WMS_BASE_URL) {
+    throw new Error("LOJIQ_WMS_BASE_URL is missing");
+  }
+
+  const res = await fetch(`${LOJIQ_WMS_BASE_URL.replace(/\/$/, "")}/api/request-label`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      source: "auto_allocate_inventory",
+      record_id: recordId,
+    }),
+  });
+
+  const text = await res.text().catch(() => "");
+
+  if (!res.ok) {
+    throw new Error(`Auto allocated label request failed: ${res.status} ${text}`);
+  }
 }
