@@ -9,7 +9,7 @@ import {
 
 const RETURN_SERVICE_WEBHOOK_URL = "https://hook.eu2.make.com/nnrdb2gn605shmf7yvc56sl0wnr1np2d";
 const CONSIGNMENT_WEBHOOK_URL = "https://hook.eu2.make.com/3eu7vi2nfgngstc98sclpul3r1gskiyy";
-const PARTNER_STOCK_WEBHOOK_URL = "https://hook.eu2.make.com/gjerr6cb7lx9a8rhyborqclngc68t9q7";
+const PARTNER_STOCK_WEBHOOK_URL = "https://kickzcaviar.com/api/consignment/offers/create";
 const LOJIQ_WMS_BASE_URL = process.env.LOJIQ_WMS_BASE_URL;
 
 export const autoAllocateBestUnit = {
@@ -311,16 +311,11 @@ async function handleOutsourceFallback({
 
       if (partnerHasStock && !isBlockedStore) {
         await postWebhook(PARTNER_STOCK_WEBHOOK_URL, {
+          order_record_id: order.id,
+          order_id: orderIdField,
           sku: skuCandidate,
           size: String(orderSize),
-          targetBuyingPrice: targetPrice ?? null,
-          maximumBuyingPrice: maxPrice ?? null,
-          client: getFirstValue(clientRef),
-          clientVatRate: clientVatRateFraction,
-          clientVatRatePercent,
-          clientCountry,
-          storeName,
-          orderId: orderIdField,
+          maximum_buying_price: maxPrice ?? null,
         });
       }
     }
