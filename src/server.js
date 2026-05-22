@@ -14,7 +14,20 @@ import {
 const app = express();
 app.use(express.json());
 
-let cursor = null;
+const webhookConfigs = [
+  {
+    name: "orders",
+    webhookId: process.env.AIRTABLE_WEBHOOK_ID,
+    stateKey: "airtable_cursor",
+    cursor: null,
+  },
+  {
+    name: "stock_levels",
+    webhookId: process.env.AIRTABLE_STOCK_LEVELS_WEBHOOK_ID,
+    stateKey: "airtable_stock_levels_cursor",
+    cursor: null,
+  },
+];
 let isProcessing = false;
 
 const airtable = {
@@ -41,7 +54,9 @@ app.post("/webhook", async (req, res) => {
   isProcessing = true;
 
   try {
-    await processWebhookPayloads();
+    for (const config of webhookConfigs) {
+      await processWebhookPayloads(config);
+    }
   } catch (err) {
     console.error("❌ Webhook processing failed:", err);
   } finally {
@@ -130,26 +145,36 @@ function hasRelevantAutomationForChange(tableName, eventType, changedFieldNames)
   });
 }
 
-async function loadCursor() {
-  const state = await getAutomationState("airtable_cursor");
-  cursor = String(state?.fields?.Value || "1");
+async function loadCursors() {
+  for (const config of webhookConfigs) {
+    const state = await getAutomationState(config.stateKey);
 
-  console.log(`📍 Loaded Airtable cursor: ${cursor}`);
+    config.cursor = String(state?.fields?.Value || "1");
+
+    console.log(
+      `📍 Loaded Airtable cursor (${config.name}): ${config.cursor}`
+    );
+  }
 }
 
-async function saveCursor(newCursor) {
-  cursor = String(newCursor);
+async function saveCursor(config, newCursor) {
+  config.cursor = String(newCursor);
 
-  await setAutomationState("airtable_cursor", cursor);
+  await setAutomationState(config.stateKey, config.cursor);
 
-  console.log(`💾 Saved Airtable cursor: ${cursor}`);
+  console.log(
+    `💾 Saved Airtable cursor (${config.name}): ${config.cursor}`
+  );
 }
 
-async function processWebhookPayloads() {
-  const data = await getWebhookPayloads(cursor);
+async function processWebhookPayloads(config) {
+  const data = await getWebhookPayloads(
+    config.webhookId,
+    config.cursor
+  );
 
   console.log("Webhook payload debug", {
-    oldCursor: cursor,
+    oldCursor: config.cursor,
     newCursor: data.cursor,
     payloadCount: data.payloads?.length || 0,
   });
@@ -218,8 +243,11 @@ async function processWebhookPayloads() {
     }
   }
 
-  await saveCursor(data.cursor);
-  console.log(`✅ Cursor updated to ${cursor}`);
+  await saveCursor(config, data.cursor);
+
+  console.log(
+    `✅ Cursor updated (${config.name}) to ${config.cursor}`
+  );
 }
 
 async function processRecord(recordId, eventType, changedTableName, changedFieldNames) {
@@ -295,6 +323,6 @@ async function processRecord(recordId, eventType, changedTableName, changedField
 const port = process.env.PORT || 3000;
 
 app.listen(port, async () => {
-  await loadCursor();
+  await loadCursors();
   console.log(`Automation engine listening on port ${port}`);
 });
