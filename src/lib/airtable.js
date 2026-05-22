@@ -1,9 +1,9 @@
 const AIRTABLE_API = "https://api.airtable.com/v0";
 
-export async function getWebhookPayloads(cursor = 1) {
+export async function getWebhookPayloads(webhookId, cursor = 1) {
   const url =
     `${AIRTABLE_API}/bases/${process.env.AIRTABLE_BASE_ID}` +
-    `/webhooks/${process.env.AIRTABLE_WEBHOOK_ID}/payloads` +
+    `/webhooks/${webhookId}/payloads` +
     `?cursor=${cursor}&limit=50`;
 
   const res = await fetch(url, {
