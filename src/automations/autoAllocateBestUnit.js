@@ -233,7 +233,7 @@ export const autoAllocateBestUnit = {
         if (typeName === "Consignment") {
           const itemId = getFirstValue(bestUnit.fields["Item ID"]);
 
-          if (itemId.startsWith("CS") && !isBlockedStore) {
+          if (itemId.startsWith("CS") && isAutoOfferAccept) {
             await postWebhook(CONSIGNMENT_WEBHOOK_URL, {
               orderId: order.id,
               orderCustomId: orderIdField,
