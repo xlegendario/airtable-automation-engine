@@ -11,6 +11,8 @@ const RETURN_SERVICE_WEBHOOK_URL = "https://hook.eu2.make.com/nnrdb2gn605shmf7yv
 const CONSIGNMENT_WEBHOOK_URL = "https://hook.eu2.make.com/3eu7vi2nfgngstc98sclpul3r1gskiyy";
 const PARTNER_STOCK_WEBHOOK_URL = "https://kickzcaviar.com/api/consignment/offers/create";
 const LOJIQ_WMS_BASE_URL = process.env.LOJIQ_WMS_BASE_URL;
+const KICKZ_CAVIAR_PORTAL_BASE_URL =
+  process.env.KICKZ_CAVIAR_PORTAL_BASE_URL || "https://kickzcaviar.com";
 
 export const autoAllocateBestUnit = {
   name: "autoAllocateBestUnit",
@@ -66,8 +68,8 @@ export const autoAllocateBestUnit = {
     const clientId = getLinkedId(clientRef);
 
     const storeName = getFirstValue(f["Store Name"]);
-    const blockedStores = ["APLUG.PL", "SneakerAsk"];
-    const isBlockedStore = blockedStores.includes(storeName);
+    const autoOfferAccept = getFirstValue(f["Auto Offer Accept?"]);
+    const isAutoOfferAccept = autoOfferAccept === "Yes";
 
     const clientVatRateFraction = parseVatFraction(getFirstValue(f["Client VAT Rate"]));
     const clientVatRatePercent =
@@ -271,7 +273,7 @@ export const autoAllocateBestUnit = {
       clientCountry,
       storeName,
       orderIdField,
-      isBlockedStore,
+      isAutoOfferAccept,
     });
   },
 };
@@ -289,7 +291,7 @@ async function handleOutsourceFallback({
   clientCountry,
   storeName,
   orderIdField,
-  isBlockedStore,
+  isAutoOfferAccept,
 }) {
   let partnerHasStock = false;
 
@@ -309,14 +311,39 @@ async function handleOutsourceFallback({
       const partnerLevel = getNumber(match.fields["Partner Stock Level"]);
       partnerHasStock = typeof partnerLevel === "number" && partnerLevel > 0;
 
-      if (partnerHasStock && !isBlockedStore) {
-        await postWebhook(PARTNER_STOCK_WEBHOOK_URL, {
-          order_record_id: order.id,
-          order_id: orderIdField,
-          sku: skuCandidate,
-          size: String(orderSize),
-          maximum_buying_price: maxPrice ?? null,
-        });
+      if (partnerHasStock) {
+        if (isAutoOfferAccept) {
+          await postWebhook(PARTNER_STOCK_WEBHOOK_URL, {
+            order_record_id: order.id,
+            order_id: orderIdField,
+            sku: skuCandidate,
+            size: String(orderSize),
+            maximum_buying_price: maxPrice ?? null,
+          });
+        } else {
+          const preOffer = await calculateConsignmentPreOffer({
+            orderRecordId: order.id,
+            sku: skuCandidate,
+            size: String(orderSize)
+          });
+      
+          await ctx.airtable.updateRecord("Unfulfilled Orders Log", order.id, {
+            "Custom Offer": preOffer.custom_offer,
+            "Offer VAT Type": preOffer.offer_vat_type,
+            "Estimated Time": preOffer.estimated_time,
+            "Offer Sent?": true,
+            "Consignment Pre-Offer?": true,
+            "Consignment Offer Price": preOffer.consignment_offer_price,
+            Notes:
+              `Partner stock found. Store pre-offer sent based on consignment stock. ` +
+              `Best seller: ${preOffer.best_inventory?.seller_id || "-"} / ` +
+              `${preOffer.best_inventory?.vat_type || "-"} / ` +
+              `€${Number(preOffer.best_inventory?.seller_price || 0).toFixed(2)}.`,
+            auto_allocate_attempted_at: new Date().toISOString(),
+          });
+      
+          return;
+        }
       }
     }
   }
@@ -324,7 +351,7 @@ async function handleOutsourceFallback({
   await ctx.airtable.updateRecord("Unfulfilled Orders Log", order.id, {
     "Fulfillment Status": "Outsource",
     Notes: partnerHasStock
-      ? "No in-house match. Partner stock > 0 found → webhook sent to partners unless Store is blocked."
+      ? "No in-house match. Partner stock > 0 found."
       : "No in-house match and no partner stock available or Partner Stock Level ≤ 0.",
     auto_allocate_attempted_at: new Date().toISOString(),
   });
@@ -362,6 +389,39 @@ async function postWebhook(url, payload) {
   if (!res.ok) {
     throw new Error(`Webhook failed: ${res.status} ${await res.text()}`);
   }
+}
+
+async function calculateConsignmentPreOffer({
+  orderRecordId,
+  sku,
+  size
+}) {
+  const res = await fetch(
+    `${KICKZ_CAVIAR_PORTAL_BASE_URL.replace(/\/$/, "")}/api/consignment/pre-offer/calculate`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        order_record_id: orderRecordId,
+        sku,
+        size
+      })
+    }
+  );
+
+  const data = await res.json().catch(() => null);
+
+  if (!res.ok) {
+    throw new Error(
+      data?.details ||
+      data?.error ||
+      `Consignment pre-offer failed: ${res.status}`
+    );
+  }
+
+  return data;
 }
 
 function escapeFormulaString(value) {
