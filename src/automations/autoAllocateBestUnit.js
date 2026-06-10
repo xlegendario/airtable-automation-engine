@@ -328,6 +328,7 @@ async function handleOutsourceFallback({
           });
       
           await ctx.airtable.updateRecord("Unfulfilled Orders Log", order.id, {
+            "Fulfillment Status": "Outsource",
             "Custom Offer": preOffer.custom_offer,
             "Offer VAT Type": preOffer.offer_vat_type,
             "Estimated Time": preOffer.estimated_time,
