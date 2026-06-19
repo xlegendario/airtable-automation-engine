@@ -15,18 +15,11 @@ export const sendShippingLabelToDiscord = {
 
   async shouldRun(record) {
     const f = record.fields;
-
+  
     const hasShippingLabel = !!f["Shipping Label"];
     const alreadySent = !!f["Label Sent To Discord?"];
-
-    const hasClaimedChannel = !!f["Claimed Channel ID"];
-    const hasWtbChannel = !!f["WTB Created Channel ID"];
-
-    return (
-      hasShippingLabel &&
-      !alreadySent &&
-      (hasClaimedChannel || hasWtbChannel)
-    );
+  
+    return hasShippingLabel && !alreadySent;
   },
 
   async run(record, ctx) {
