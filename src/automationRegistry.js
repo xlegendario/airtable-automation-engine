@@ -16,6 +16,10 @@ import { sendShipmentDelayWebhook } from "./automations/sendShipmentDelayWebhook
 import { markLinkedInventoryPaidIfAutoSeller } from "./automations/markLinkedInventoryPaidIfAutoSeller.js";
 import { sendOfferRequestWebhook } from "./automations/sendOfferRequestWebhook.js";
 import { touchStockLevelModified } from "./automations/touchStockLevelModified.js";
+import {
+  closeOrderConsignmentOffersWhenNotOutsource,
+  closeMemberWtbConsignmentOffersWhenNotOutsource,
+} from "./automations/closeConsignmentOffersWhenNotOutsource.js";
 
 export const automations = [
   unfulfilledOrderCreated,
@@ -36,4 +40,6 @@ export const automations = [
   markLinkedInventoryPaidIfAutoSeller,
   sendOfferRequestWebhook,
   touchStockLevelModified,
+  closeOrderConsignmentOffersWhenNotOutsource,
+  closeMemberWtbConsignmentOffersWhenNotOutsource,
 ];
