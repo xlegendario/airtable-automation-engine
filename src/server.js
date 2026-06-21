@@ -27,6 +27,12 @@ const webhookConfigs = [
     stateKey: "airtable_stock_levels_cursor",
     cursor: null,
   },
+  {
+    name: "member_wtbs",
+    webhookId: process.env.AIRTABLE_MEMBER_WTBS_WEBHOOK_ID,
+    stateKey: "airtable_member_wtbs_cursor",
+    cursor: null,
+  },
 ];
 let isProcessing = false;
 
