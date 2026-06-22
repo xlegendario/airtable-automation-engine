@@ -20,6 +20,8 @@ import {
   closeOrderConsignmentOffersWhenNotOutsource,
   closeMemberWtbConsignmentOffersWhenNotOutsource,
 } from "./automations/closeConsignmentOffersWhenNotOutsource.js";
+import { memberWtbShippingLabelReadyToShip } from "./automations/memberWtbShippingLabelReadyToShip.js";
+import { memberWtbSendShippingLabelToDiscord } from "./automations/memberWtbSendShippingLabelToDiscord.js";
 
 export const automations = [
   unfulfilledOrderCreated,
@@ -42,4 +44,6 @@ export const automations = [
   touchStockLevelModified,
   closeOrderConsignmentOffersWhenNotOutsource,
   closeMemberWtbConsignmentOffersWhenNotOutsource,
+  memberWtbShippingLabelReadyToShip,
+  memberWtbSendShippingLabelToDiscord,
 ];
