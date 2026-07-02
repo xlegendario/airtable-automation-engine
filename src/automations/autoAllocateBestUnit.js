@@ -55,6 +55,12 @@ export const autoAllocateBestUnit = {
   },
 
   async run(order, ctx) {
+    const orderRecordId = getRecordId(order);
+  
+    if (!orderRecordId) {
+      throw new Error("Invalid order id");
+    }
+  
     const f = order.fields;
 
     const orderSKU = getFirstValue(f["SKU"]).toUpperCase();
@@ -117,21 +123,27 @@ export const autoAllocateBestUnit = {
       const vatType = getSelectName(sameSellerReturnMatch.fields["VAT Type"]);
       const offer = calcReturnServiceOffer(purchasePrice, vatType, maxPrice);
 
-      await ctx.airtable.updateRecord(this.tableName, order.id, {
-        "Linked Inventory Unit": [{ id: sameSellerReturnMatch.id }],
+      const sameSellerReturnMatchId = getRecordId(sameSellerReturnMatch);
+      
+      if (!sameSellerReturnMatchId) {
+        throw new Error("Invalid sameSellerReturnMatch id");
+      }
+      
+      await ctx.airtable.updateRecord(this.tableName, orderRecordId, {
+        "Linked Inventory Unit": [{ id: sameSellerReturnMatchId }],
         "Fulfillment Status": "Allocated",
         "Final Buying Price": offer,
         Notes: "Allocated directly to matching Return Service seller item",
         auto_allocate_attempted_at: new Date().toISOString(),
       });
 
-      await ctx.airtable.updateRecord("Inventory Units", sameSellerReturnMatch.id, {
+      await ctx.airtable.updateRecord("Inventory Units", sameSellerReturnMatchId, {
         "Availability Status": "Reserved",
         "Selling Price": offer,
         "Selling Method": "Plug & Play",
       });
       
-      await requestLabelForAutoAllocatedInventory(order.id);
+      await requestLabelForAutoAllocatedInventory(orderRecordId);
       
       return;
     }
@@ -205,9 +217,15 @@ export const autoAllocateBestUnit = {
 
     if (bestUnit) {
       bestFinalPrice = Math.round(bestFinalPrice * 100) / 100;
-
-      await ctx.airtable.updateRecord(this.tableName, order.id, {
-        "Linked Inventory Unit": [{ id: bestUnit.id }],
+    
+      const bestUnitId = getRecordId(bestUnit);
+    
+      if (!bestUnitId) {
+        throw new Error("Invalid bestUnit id");
+      }
+    
+      await ctx.airtable.updateRecord(this.tableName, orderRecordId, {
+        "Linked Inventory Unit": [{ id: bestUnitId }],
         "Fulfillment Status": "Allocated",
         "Final Buying Price": bestFinalPrice,
         Notes: "Allocated from inventory based on best profit (stored net)",
@@ -235,9 +253,9 @@ export const autoAllocateBestUnit = {
 
           if (itemId.startsWith("CS") && isAutoOfferAccept) {
             await postWebhook(CONSIGNMENT_WEBHOOK_URL, {
-              orderId: order.id,
+              orderId: orderRecordId,
               orderCustomId: orderIdField,
-              inventoryUnitId: bestUnit.id,
+              inventoryUnitId: bestUnitId,
               itemId,
               sku: orderSKU || orderSoftSKU || null,
               size: orderSize || null,
@@ -253,9 +271,9 @@ export const autoAllocateBestUnit = {
         }
       }
 
-      await ctx.airtable.updateRecord("Inventory Units", bestUnit.id, invUpdate);
+      await ctx.airtable.updateRecord("Inventory Units", bestUnitId, invUpdate);
 
-      await requestLabelForAutoAllocatedInventory(order.id);
+      await requestLabelForAutoAllocatedInventory(orderRecordId);
       
       return;
     }
@@ -423,6 +441,13 @@ async function calculateConsignmentPreOffer({
   }
 
   return data;
+}
+
+function getRecordId(recordOrId) {
+  if (!recordOrId) return null;
+  if (typeof recordOrId === "string") return recordOrId;
+  if (typeof recordOrId.id === "string") return recordOrId.id;
+  return null;
 }
 
 function escapeFormulaString(value) {
