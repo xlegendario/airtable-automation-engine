@@ -130,7 +130,7 @@ export const autoAllocateBestUnit = {
       }
       
       await ctx.airtable.updateRecord(this.tableName, orderRecordId, {
-        "Linked Inventory Unit": [{ id: sameSellerReturnMatchId }],
+        "Linked Inventory Unit": [sameSellerReturnMatchId],
         "Fulfillment Status": "Allocated",
         "Final Buying Price": offer,
         Notes: "Allocated directly to matching Return Service seller item",
@@ -225,7 +225,7 @@ export const autoAllocateBestUnit = {
       }
     
       await ctx.airtable.updateRecord(this.tableName, orderRecordId, {
-        "Linked Inventory Unit": [{ id: bestUnitId }],
+        "Linked Inventory Unit": [bestUnitId],
         "Fulfillment Status": "Allocated",
         "Final Buying Price": bestFinalPrice,
         Notes: "Allocated from inventory based on best profit (stored net)",
