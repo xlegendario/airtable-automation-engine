@@ -46,29 +46,37 @@ export const sendShipmentDelayWebhook = {
     const f = record.fields;
 
     const delayTrigger = getFirstValue(f["Shipment Delay Trigger"]);
+    const isPenalty = delayTrigger === "delay-penalty";
 
     const payload = {
-      trigger_type:
-        delayTrigger === "delay-penalty"
-          ? "shipment-delay-penalty"
-          : "shipment-delay-warning",
+      trigger_type: isPenalty
+        ? "shipment-delay-penalty"
+        : "shipment-delay-warning",
 
-      delay_stage:
-        delayTrigger === "delay-penalty"
-          ? "penalty"
-          : "warning",
+      delay_stage: isPenalty
+        ? "penalty"
+        : "warning",
 
       penalty_amount: 10,
 
       shopify_order_number: getFirstValue(f["Shopify Order Number"]),
       order_id: getFirstValue(f["Order ID"]),
-      linked_seller_id: getFirstValue(f["Linked Seller ID"]),
 
+      linked_seller_id: getFirstValue(f["Linked Seller ID"]),
+      seller_id: getFirstValue(f["Seller ID"]),
+
+      store_name: getFirstValue(f["Store Name"]),
       source: getFirstValue(f["Source"]),
 
       product_name: getFirstValue(f["Product Name"]),
       size: getFirstValue(f["Size"]),
       sku: getFirstValue(f["SKU"]),
+
+      tracking_url: getFirstValue(f["Tracking URL"]),
+
+      claimed_channel_id: getFirstValue(f["Claimed Channel ID"]),
+      wtb_created_channel_id: getFirstValue(f["WTB Created Channel ID"]),
+      consignment_created_channel_id: getFirstValue(f["Consignment Created Channel ID"]),
 
       record_id: record.id,
     };
