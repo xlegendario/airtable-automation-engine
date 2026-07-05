@@ -3,19 +3,14 @@ import { getFirstValue } from "../lib/helpers.js";
 const TABLE_NAME = "Unfulfilled Orders Log";
 const WEBHOOK_URL = "https://airtable-discord-updates.onrender.com/";
 
-const BLOCKED_SELLERS = [
-  "SE-00781",
-  "SE-00683",
-  "SE-00455",
-];
-
 export const sendShipmentDelayWebhook = {
   name: "sendShipmentDelayWebhook",
   tableName: TABLE_NAME,
   eventTypes: ["changed"],
 
   watchFields: [
-    "Days Since Fulfillment",
+    "Shipment Delay Trigger",
+    "Shipping Status",
     "Source",
     "Linked Seller ID",
   ],
@@ -23,30 +18,26 @@ export const sendShipmentDelayWebhook = {
   async shouldRun(record) {
     const f = record.fields;
 
-    const days = Number(f["Days Since Fulfillment"]);
-    const source = getFirstValue(f["Source"]);
-    const sellerId = getFirstValue(f["Linked Seller ID"]);
+    const delayTrigger = getFirstValue(f["Shipment Delay Trigger"]);
+    const shippingStatus = getFirstValue(f["Shipping Status"]);
 
-    const sellerAllowed = !BLOCKED_SELLERS.includes(sellerId);
+    const isStillPending =
+      !shippingStatus ||
+      shippingStatus === "Pending";
 
-    const isInStockDelay =
-      days === 2 &&
-      source === "In Stock";
+    const isWarning =
+      delayTrigger === "delay-warning" &&
+      !f["Shipment Delay Warning Sent At"];
 
-    const isEuOutsourceDelay =
-      days === 3 &&
-      source === "EU Outsource";
-
-    const isMarketplaceDelay =
-      days === 9 &&
-      source === "Marketplace";
+    const isPenalty =
+      delayTrigger === "delay-penalty" &&
+      !f["Shipment Delay Penalty Sent At"];
 
     return (
-      sellerAllowed &&
+      isStillPending &&
       (
-        isInStockDelay ||
-        isEuOutsourceDelay ||
-        isMarketplaceDelay
+        isWarning ||
+        isPenalty
       )
     );
   },
@@ -54,12 +45,26 @@ export const sendShipmentDelayWebhook = {
   async run(record) {
     const f = record.fields;
 
+    const delayTrigger = getFirstValue(f["Shipment Delay Trigger"]);
+
     const payload = {
-      trigger_type: "shipment-delay",
+      trigger_type:
+        delayTrigger === "delay-penalty"
+          ? "shipment-delay-penalty"
+          : "shipment-delay-warning",
+
+      delay_stage:
+        delayTrigger === "delay-penalty"
+          ? "penalty"
+          : "warning",
+
+      penalty_amount: 10,
 
       shopify_order_number: getFirstValue(f["Shopify Order Number"]),
       order_id: getFirstValue(f["Order ID"]),
       linked_seller_id: getFirstValue(f["Linked Seller ID"]),
+
+      source: getFirstValue(f["Source"]),
 
       product_name: getFirstValue(f["Product Name"]),
       size: getFirstValue(f["Size"]),
