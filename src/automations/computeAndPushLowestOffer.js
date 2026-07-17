@@ -2,12 +2,9 @@ import { getFirstValue, getNumber, getSelectName } from "../lib/helpers.js";
 
 const TABLE_NAME = "Unfulfilled Orders Log";
 
-// Same estimate-per-source values Make scenario 1 used to write.
-// TODO: confirm with Dario whether these should instead come from
-// "Estimated Fulfillment Time" (which already varies by fulfillment
-// method) rather than being fixed per Partner/Seller.
-const ESTIMATED_DAYS_SELLER = 2;
-const ESTIMATED_DAYS_PARTNER = 7;
+function getEstimatedTimeText(f) {
+  return getFirstValue(f["Estimated Fulfillment Time"]) || null;
+}
 
 export const computeAndPushLowestOffer = {
   name: "computeAndPushLowestOffer",
@@ -70,9 +67,12 @@ export const computeAndPushLowestOffer = {
     } else {
       updates["Lowest Offer"] = amount;
       updates["Offer VAT Type"] = vatType;
-      updates["Estimated Time"] = isPartner
-        ? ESTIMATED_DAYS_PARTNER
-        : ESTIMATED_DAYS_SELLER;
+
+      const estimatedTimeText = getEstimatedTimeText(f);
+      if (estimatedTimeText) {
+        updates["Estimated Time"] = estimatedTimeText;
+      }
+
       updates["Offer Accepted?"] = false;
       updates["Offer Sent?"] = true;
       updates["Offer Notes"] = isPartner
