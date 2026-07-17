@@ -2,8 +2,15 @@ import { getFirstValue, getNumber, getSelectName } from "../lib/helpers.js";
 
 const TABLE_NAME = "Unfulfilled Orders Log";
 
-function getEstimatedTimeText(f) {
-  return getFirstValue(f["Estimated Fulfillment Time"]) || null;
+// "Estimated Fulfillment Time" depends on "Source", which only gets
+// filled in AFTER acceptance (once there's a Linked Inventory Unit /
+// Linked Seller ID) — so at offer-request time it's always empty.
+// Hardcode a reasonable estimate per Partner/Seller instead.
+const ESTIMATED_TIME_SELLER = "24 - 72 hours";
+const ESTIMATED_TIME_PARTNER = "within 10-12 business days";
+
+function getEstimatedTimeText(isPartner) {
+  return isPartner ? ESTIMATED_TIME_PARTNER : ESTIMATED_TIME_SELLER;
 }
 
 export const computeAndPushLowestOffer = {
@@ -68,7 +75,7 @@ export const computeAndPushLowestOffer = {
       updates["Lowest Offer"] = amount;
       updates["Offer VAT Type"] = vatType;
 
-      const estimatedTimeText = getEstimatedTimeText(f);
+      const estimatedTimeText = getEstimatedTimeText(isPartner);
       if (estimatedTimeText) {
         updates["Estimated Time"] = estimatedTimeText;
       }
