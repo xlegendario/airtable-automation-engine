@@ -21,7 +21,7 @@ export const sendOfferRequestWebhook = {
 
     const offerVatType = getFirstValue(f["Offer VAT Type"]);
     const offerToStore = getNumber(f["Offer To Store"]);
-    const estimatedTime = getNumber(f["Estimated Time"]);
+    const estimatedTime = getFirstValue(f["Estimated Time"]) || null;
     const offerSent = !!f["Offer Sent?"];
 
     const currentKey = buildOfferWebhookKey({
@@ -45,7 +45,7 @@ export const sendOfferRequestWebhook = {
 
     const offerVatType = getFirstValue(f["Offer VAT Type"]);
     const offerToStore = getNumber(f["Offer To Store"]);
-    const estimatedTime = getNumber(f["Estimated Time"]);
+    const estimatedTime = getFirstValue(f["Estimated Time"]) || null;
 
     if (offerToStore == null) {
       throw new Error(`Offer To Store invalid/empty for ${record.id}`);
