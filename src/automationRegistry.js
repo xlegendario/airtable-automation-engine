@@ -22,6 +22,7 @@ import {
 } from "./automations/closeConsignmentOffersWhenNotOutsource.js";
 import { memberWtbShippingLabelReadyToShip } from "./automations/memberWtbShippingLabelReadyToShip.js";
 import { memberWtbSendShippingLabelToDiscord } from "./automations/memberWtbSendShippingLabelToDiscord.js";
+import { computeAndPushLowestOffer } from "./automations/computeAndPushLowestOffer.js";
 
 export const automations = [
   unfulfilledOrderCreated,
@@ -46,4 +47,5 @@ export const automations = [
   closeMemberWtbConsignmentOffersWhenNotOutsource,
   memberWtbShippingLabelReadyToShip,
   memberWtbSendShippingLabelToDiscord,
+  computeAndPushLowestOffer,
 ];
