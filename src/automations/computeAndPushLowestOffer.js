@@ -125,30 +125,38 @@ function computeQualifyingOffer(f) {
   }
 
   // partnerOrSeller === "Seller"
-  const vatType = getFirstValue(f["Lowest Offer VAT Type"]);
+  const sellerVatType = getFirstValue(f["Lowest Offer VAT Type"]);
   const country = getFirstValue(f["Client Country"]);
   const isNL = country === "Netherlands";
 
   let amount;
   let threshold;
+  let outputVatType;
 
-  if (vatType === "Margin") {
+  if (sellerVatType === "Margin") {
     amount = getNumber(f["Lowest Seller Offer"]);
     threshold = getNumber(f["Final Outsource Buying Price"]);
-  } else if (vatType === "VAT0") {
+    outputVatType = "Margin";
+  } else if (sellerVatType === "VAT0") {
     amount = isNL
       ? getNumber(f["Lowest Seller Offer (Normalized)"])
       : getNumber(f["Lowest Seller Offer"]);
     threshold = isNL
       ? getNumber(f["Final Outsource Buying Price"])
       : getNumber(f["Final Outsource Buying Price (VAT 0%)"]);
-  } else if (vatType === "VAT21") {
+    // Store-facing VAT type follows the CLIENT's country, not the
+    // seller's own VAT type — NL clients always see VAT21, non-NL
+    // clients always see VAT0 (confirmed against scenario 1: this
+    // relabeling is consistent across all 4 branches there).
+    outputVatType = isNL ? "VAT21" : "VAT0";
+  } else if (sellerVatType === "VAT21") {
     amount = isNL
       ? getNumber(f["Lowest Seller Offer"])
       : getNumber(f["Lowest Seller Offer (VAT excl.)"]);
     threshold = isNL
       ? getNumber(f["Final Outsource Buying Price"])
       : getNumber(f["Final Outsource Buying Price (VAT 0%)"]);
+    outputVatType = isNL ? "VAT21" : "VAT0";
   } else {
     return null;
   }
@@ -162,7 +170,7 @@ function computeQualifyingOffer(f) {
 
   return {
     amount,
-    vatType,
+    vatType: outputVatType,
     threshold,
     beatsConsignment,
     isPartner: false,
