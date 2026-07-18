@@ -61,6 +61,7 @@ export const sendOfferRequestWebhook = {
       trigger_type: "offer-requests",
 
       store_name: getFirstValue(f["Store Name"]),
+      order_id: getFirstValue(f["Order ID"]),
       shopify_order_number: getFirstValue(f["Shopify Order Number"]),
       product_name:
         getFirstValue(f["Shopify Product Name"]) ||
