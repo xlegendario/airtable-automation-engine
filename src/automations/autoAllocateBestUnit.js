@@ -349,7 +349,7 @@ async function handleOutsourceFallback({
             "Fulfillment Status": "Outsource",
             "Custom Offer": preOffer.custom_offer,
             "Offer VAT Type": preOffer.offer_vat_type,
-            "Estimated Time": preOffer.estimated_time,
+            "Estimated Time": "Within 24-48 hours",
             "Offer Sent?": true,
             "Consignment Pre-Offer?": true,
             "Consignment Offer Price": preOffer.consignment_offer_price,
