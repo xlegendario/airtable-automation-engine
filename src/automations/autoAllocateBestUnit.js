@@ -345,11 +345,25 @@ async function handleOutsourceFallback({
             size: String(orderSize)
           });
       
+          // FIXED — this used to write the already-margined
+          // preOffer.custom_offer into "Custom Offer", which takes top
+          // priority in the "Offer To Store" formula and therefore
+          // permanently blocked any cheaper genuine seller offer from
+          // ever surfacing to the store for the entire consignment
+          // negotiation (confirmed live: a real order came in and the
+          // same blocking wrote happened again). Now writes the raw,
+          // pre-margin store_base_price into "Lowest Offer" instead —
+          // the same field/scale regular sellers compete on — so the
+          // Offer To Store formula applies margin itself (same result
+          // as before) and a cheaper seller offer can still correctly
+          // win via the cross-system competition logic built for this
+          // (kickz-caviar-portal-main's consignor-counter endpoints +
+          // computeAndPushLowestOffer.js's now-protected overwrite).
           await ctx.airtable.updateRecord("Unfulfilled Orders Log", order.id, {
             "Fulfillment Status": "Outsource",
-            "Custom Offer": preOffer.custom_offer,
+            "Lowest Offer": preOffer.best_inventory?.store_base_price,
             "Offer VAT Type": preOffer.offer_vat_type,
-            "Estimated Time": "Within 24-48 hours",
+            "Estimated Time": preOffer.estimated_time,
             "Offer Sent?": true,
             "Consignment Pre-Offer?": true,
             "Consignment Offer Price": preOffer.consignment_offer_price,
