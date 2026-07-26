@@ -72,6 +72,24 @@ export const computeAndPushLowestOffer = {
         ? "Offer Accepted From Partner Offers"
         : "Offer Accepted From Seller Offers";
     } else {
+      // FIXED — additive only: "Lowest Offer" is now also written by
+      // the consignment counter-offer flow (kickz-caviar-portal-main),
+      // so sellers and consignors correctly compete on the same
+      // number. Without this check, a new seller offer would blindly
+      // overwrite that field even when it's WORSE than a consignor's
+      // current, better counter — this only writes when the new
+      // amount is actually an improvement (or nothing was there yet).
+      const currentLowestOffer = getNumber(f["Lowest Offer"]);
+      const isImprovement =
+        currentLowestOffer == null || amount < currentLowestOffer;
+
+      if (!isImprovement) {
+        console.log(
+          `ℹ️ ${record.id}: seller/partner offer (€${amount}) doesn't beat the current Lowest Offer (€${currentLowestOffer}) — not overwriting.`
+        );
+        return;
+      }
+
       updates["Lowest Offer"] = amount;
       updates["Offer VAT Type"] = vatType;
 
