@@ -113,13 +113,26 @@ export const calculateLinkedUnitPrice = {
       }
 
       // B) Custom Offer wins
+      // FIXED — this used to prefer offerToStore (the "Offer To Store"
+      // FORMULA field, which rounds to the nearest €2.50) over the
+      // literally-agreed customOffer whenever both existed. The
+      // negotiation system only ever guarantees whole-euro prices, not
+      // ones that land on a €2.50 grid, so a genuinely agreed price
+      // like €384 could silently become €385 here — the actual money
+      // moved didn't match what was negotiated. Now uses the literal
+      // agreed price first; Offer To Store is still the fallback when
+      // there's no Custom Offer at all (a still-fresh, never-
+      // negotiated offer). Branch A (SneakerAsk/APLUG.PL forced
+      // stores) and Branch C (Lowest Offer comparison) are deliberately
+      // untouched — this only affects how an already-accepted,
+      // negotiated deal's final price is chosen.
       if (customOffer != null) {
-        const basePrice = offerToStore != null ? offerToStore : customOffer;
+        const basePrice = customOffer;
         const finalPrice = applyVatConversionIfNeeded(basePrice);
 
         await updateAllocated(order, unitId, finalPrice, ctx, {
           notes:
-            "Final price set from accepted Custom Offer (Offer To Store preferred, else Custom Offer).",
+            "Final price set from accepted Custom Offer (literal agreed price, not the rounded Offer To Store).",
         });
 
         return;
