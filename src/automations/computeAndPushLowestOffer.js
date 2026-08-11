@@ -13,11 +13,22 @@ function getEstimatedTimeText(isPartner) {
   return isPartner ? ESTIMATED_TIME_PARTNER : ESTIMATED_TIME_SELLER;
 }
 
+// FIXED — VAT-normalization for cross-VAT comparison. Convention
+// (confirmed, matches the rest of the codebase): VAT0 is exclusive, so
+// it must be multiplied by 1.21 to sit on the same comparable scale;
+// VAT21 and Margin are already inclusive and stay unchanged. Without
+// this, a raw comparison (e.g. 220 Margin vs 185 VAT0) compares two
+// different scales and wrongly rejects a genuinely better offer
+// (220 Margin normalized = 220, beats 185 VAT0 normalized = 223.85).
+function normalizeForCompare(value, vatType) {
+  if (value == null) return null;
+  return vatType === "VAT0" ? value * 1.21 : value;
+}
+
 export const computeAndPushLowestOffer = {
   name: "computeAndPushLowestOffer",
   tableName: TABLE_NAME,
   eventTypes: ["changed"],
-
   watchFields: [
     "Lowest Seller Offer",
     "Lowest Seller Offer (Normalized)",
@@ -27,28 +38,20 @@ export const computeAndPushLowestOffer = {
     "Consignment Pre-Offer?",
     "Consignment Offer Price",
   ],
-
   async shouldRun(record) {
     const f = record.fields;
-
     const status = getSelectName(f["Fulfillment Status"]);
     if (status !== "Outsource" && status !== "Claim Processing") return false;
-
     return computeQualifyingOffer(f) != null;
   },
-
   async run(record, ctx) {
     const f = record.fields;
-
     const offer = computeQualifyingOffer(f);
-
     if (!offer) {
       console.log(`ℹ️ No qualifying offer to process for ${record.id}`);
       return;
     }
-
     const { amount, vatType, threshold, beatsConsignment, isPartner } = offer;
-
     const updates = {};
 
     // Seller beats an existing consignment pre-offer: clear it and treat
@@ -79,25 +82,43 @@ export const computeAndPushLowestOffer = {
       // overwrite that field even when it's WORSE than a consignor's
       // current, better counter — this only writes when the new
       // amount is actually an improvement (or nothing was there yet).
+      //
+      // FIXED (VAT scale) — both sides must be normalized to the same
+      // comparison scale first. "Lowest Offer" is stored raw in its own
+      // VAT scale, tagged by "Offer VAT Type"; the new offer's scale is
+      // `vatType`. Comparing the raw numbers directly (as before) mixed
+      // scales and rejected genuinely-better cross-VAT offers.
       const currentLowestOffer = getNumber(f["Lowest Offer"]);
+      const currentLowestVatType = getFirstValue(f["Offer VAT Type"]);
+
+      const newNormalized = normalizeForCompare(amount, vatType);
+      const currentNormalized = normalizeForCompare(
+        currentLowestOffer,
+        currentLowestVatType
+      );
+
       const isImprovement =
-        currentLowestOffer == null || amount < currentLowestOffer;
+        currentNormalized == null || newNormalized < currentNormalized;
 
       if (!isImprovement) {
         console.log(
-          `ℹ️ ${record.id}: seller/partner offer (€${amount}) doesn't beat the current Lowest Offer (€${currentLowestOffer}) — not overwriting.`
+          `ℹ️ ${record.id}: seller/partner offer (€${amount} ${vatType} = €${
+            newNormalized != null ? newNormalized.toFixed(2) : "?"
+          } norm) doesn't beat the current Lowest Offer (€${currentLowestOffer} ${
+            currentLowestVatType || "?"
+          } = €${
+            currentNormalized != null ? currentNormalized.toFixed(2) : "?"
+          } norm) — not overwriting.`
         );
         return;
       }
 
       updates["Lowest Offer"] = amount;
       updates["Offer VAT Type"] = vatType;
-
       const estimatedTimeText = getEstimatedTimeText(isPartner);
       if (estimatedTimeText) {
         updates["Estimated Time"] = estimatedTimeText;
       }
-
       updates["Offer Accepted?"] = false;
       updates["Offer Sent?"] = true;
       updates["Offer Notes"] = isPartner
@@ -106,7 +127,6 @@ export const computeAndPushLowestOffer = {
     }
 
     await ctx.airtable.updateRecord(TABLE_NAME, record.id, updates);
-
     console.log(
       `✅ computeAndPushLowestOffer for ${record.id}: ${
         qualifiesForAutoAccept ? "auto-confirmed" : "forwarded to store"
@@ -133,13 +153,11 @@ function computeQualifyingOffer(f) {
   if (partnerOrSeller === "Partner") {
     const amount = getNumber(f["Lowest Partner Offer"]);
     if (amount == null) return null;
-
     const threshold = getNumber(f["Final Outsource Buying Price"]);
     const beatsConsignment =
       consignmentPreOffer &&
       consignmentOfferPrice != null &&
       amount < consignmentOfferPrice;
-
     return {
       amount,
       vatType: "Margin", // partner offers are always Margin
