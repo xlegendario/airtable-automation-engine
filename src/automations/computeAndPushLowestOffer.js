@@ -220,8 +220,18 @@ function computeQualifyingOffer(f) {
   };
 }
 
+// FIXED — this never returned true, so the auto-accept branch above was
+// dead code and every qualifying offer was forwarded to the store
+// instead. "Auto Offer Accept?" on the order is a LOOKUP of the Merchants
+// formula "Auto Acceptant?" (= IF({Auto Offer Accept?}, "Yes", "No")), so
+// the value arrives as the STRING ["Yes"] — never [true]. Confirmed
+// against the schema export. autoAllocateBestUnit.js already reads this
+// same field correctly with getFirstValue(...) === "Yes"; this now
+// mirrors that exactly. The boolean check is kept as well so a future
+// change of that field to a plain checkbox lookup keeps working.
 function isAutoAcceptEnabled(f) {
   const value = f["Auto Offer Accept?"];
-  if (Array.isArray(value)) return value[0] === true;
-  return value === true;
+  const first = Array.isArray(value) ? value[0] : value;
+  if (first === true) return true;
+  return getFirstValue(first) === "Yes";
 }
