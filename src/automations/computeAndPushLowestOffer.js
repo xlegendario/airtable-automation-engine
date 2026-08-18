@@ -68,6 +68,24 @@ export const computeAndPushLowestOffer = {
       autoAcceptEnabled && threshold != null && amount <= threshold;
 
     if (qualifiesForAutoAccept) {
+      // FIXED — this branch jumped straight to Confirmed without ever
+      // recording WHAT was accepted, so anything downstream that reads the
+      // agreed amount off a confirmed order (the Make scenario that fires
+      // on "Confirmed", and branch C of calculateLinkedUnitPrice) found an
+      // empty or stale "Lowest Offer". Written as a PAIR with the VAT tag
+      // on purpose: "Lowest Offer" is stored raw in its own VAT scale and
+      // is only interpretable together with "Offer VAT Type" — writing the
+      // amount while leaving a previous round's tag in place would put the
+      // number on the wrong scale. Mirrors r. 116-117 in the else-branch.
+      //
+      // Deliberately unconditional here, unlike the else-branch's
+      // isImprovement guard: that guard protects a still-competing
+      // consignor counter from being overwritten by a worse seller ask.
+      // Here the deal is DONE at `amount`, so the field must state the
+      // accepted price — leaving a better-looking older number would make
+      // Make pay out something that was never agreed.
+      updates["Lowest Offer"] = amount;
+      updates["Offer VAT Type"] = vatType;
       updates["Fulfillment Status"] = "Confirmed";
       updates["Offer Accepted?"] = true;
       updates["Offer Sent?"] = false;
