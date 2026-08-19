@@ -331,50 +331,72 @@ async function handleOutsourceFallback({
 
       if (partnerHasStock) {
         if (isAutoOfferAccept) {
-          await postWebhook(PARTNER_STOCK_WEBHOOK_URL, {
-            order_record_id: order.id,
-            order_id: orderIdField,
+          // CHANGED — Route B now creates a real Seller Offer too, but
+          // HELD: excluded from the Lowest Seller Offer rollups, so this
+          // auto-accepting store neither sees it nor closes on it while
+          // the consignor has not yet confirmed he still has the pair.
+          //
+          // Creating it up front rather than on his reply is deliberate:
+          // the bot's undercut check reads Seller Offer records directly,
+          // so a held offer still forces the next seller to come in lower.
+          // Without it a seller could bid ABOVE the consignment price and
+          // hand the store a worse number than what is already in stock.
+          //
+          // No ordering hazard here, unlike Route A: a held offer changes
+          // none of the rollups, so computeAndPushLowestOffer sees nothing
+          // until the hold is lifted — by which time the status below has
+          // long been set.
+          await createConsignmentAutoOffer({
+            orderRecordId: order.id,
             sku: skuCandidate,
             size: String(orderSize),
-            maximum_buying_price: maxPrice ?? null,
+            hold: true,
+            maximumBuyingPrice: maxPrice ?? null
           });
         } else {
-          const preOffer = await calculateConsignmentPreOffer({
+          // CHANGED — the consignment pre-offer is now a real Seller
+          // Offer. Everything this branch used to write onto the order
+          // by hand ("Lowest Offer", "Offer VAT Type", "Estimated
+          // Time", "Offer Sent?") is written by computeAndPushLowestOffer
+          // once that offer lands in the rollup — the same path every
+          // regular seller takes. The store therefore sees the same
+          // amount: "Offer To Store" applies the margin and
+          // computeQualifyingOffer applies the country/VAT relabeling,
+          // both from "Lowest Offer", exactly as before.
+          //
+          // ORDER MATTERS, and not obviously. computeAndPushLowestOffer
+          // only runs when the order is already on "Outsource" (its
+          // shouldRun), and "Fulfillment Status" is NOT among its
+          // watchFields — so if the Seller Offer landed while this
+          // order was still "Pending", that rollup event would be
+          // dropped and setting "Outsource" afterwards would never
+          // re-fire it. Status first means the rollup change always
+          // arrives on an order that qualifies.
+          await ctx.airtable.updateRecord("Unfulfilled Orders Log", order.id, {
+            "Fulfillment Status": "Outsource",
+          });
+
+          // auto_allocate_attempted_at is stamped AFTER the offer
+          // exists, deliberately. If the call below throws, the order
+          // stays on Outsource without the stamp, so shouldRun still
+          // passes and the next event retries it. The portal endpoint
+          // carries a duplicate guard, so a retry cannot produce a
+          // second Seller Offer for the same stock.
+          const autoOffer = await createConsignmentAutoOffer({
             orderRecordId: order.id,
             sku: skuCandidate,
             size: String(orderSize)
           });
-      
-          // FIXED — this used to write the already-margined
-          // preOffer.custom_offer into "Custom Offer", which takes top
-          // priority in the "Offer To Store" formula and therefore
-          // permanently blocked any cheaper genuine seller offer from
-          // ever surfacing to the store for the entire consignment
-          // negotiation (confirmed live: a real order came in and the
-          // same blocking wrote happened again). Now writes the raw,
-          // pre-margin store_base_price into "Lowest Offer" instead —
-          // the same field/scale regular sellers compete on — so the
-          // Offer To Store formula applies margin itself (same result
-          // as before) and a cheaper seller offer can still correctly
-          // win via the cross-system competition logic built for this
-          // (kickz-caviar-portal-main's consignor-counter endpoints +
-          // computeAndPushLowestOffer.js's now-protected overwrite).
+
           await ctx.airtable.updateRecord("Unfulfilled Orders Log", order.id, {
-            "Fulfillment Status": "Outsource",
-            "Lowest Offer": preOffer.best_inventory?.store_base_price,
-            "Offer VAT Type": preOffer.offer_vat_type,
-            "Estimated Time": preOffer.estimated_time,
-            "Offer Sent?": true,
-            "Consignment Pre-Offer?": true,
-            "Consignment Offer Price": preOffer.consignment_offer_price,
             Notes:
-              `Partner stock found. Store pre-offer sent based on consignment stock. ` +
-              `Best seller: ${preOffer.best_inventory?.seller_id || "-"} / ` +
-              `${preOffer.best_inventory?.vat_type || "-"} / ` +
-              `€${Number(preOffer.best_inventory?.seller_price || 0).toFixed(2)}.`,
+              `Partner stock found. Consignment auto-offer created as a Seller Offer. ` +
+              `Seller: ${autoOffer?.seller_id || "-"} / ` +
+              `${autoOffer?.vat_type || "-"} / ` +
+              `€${Number(autoOffer?.seller_price || 0).toFixed(2)}.`,
             auto_allocate_attempted_at: new Date().toISOString(),
           });
-      
+
           return;
         }
       }
@@ -451,6 +473,47 @@ async function calculateConsignmentPreOffer({
       data?.details ||
       data?.error ||
       `Consignment pre-offer failed: ${res.status}`
+    );
+  }
+
+  return data;
+}
+
+// NEW — sibling of calculateConsignmentPreOffer above. Creates the
+// Seller Offer in the portal, where the Supabase client lives; this
+// engine has none. calculateConsignmentPreOffer is left in place until
+// the cleanup step so reverting is a one-line change.
+async function createConsignmentAutoOffer({
+  orderRecordId,
+  sku,
+  size,
+  hold = false,
+  maximumBuyingPrice = null
+}) {
+  const res = await fetch(
+    `${KICKZ_CAVIAR_PORTAL_BASE_URL.replace(/\/$/, "")}/api/consignment/auto-offer/create`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        order_record_id: orderRecordId,
+        sku,
+        size,
+        hold,
+        maximum_buying_price: maximumBuyingPrice
+      })
+    }
+  );
+
+  const data = await res.json().catch(() => null);
+
+  if (!res.ok) {
+    throw new Error(
+      data?.details ||
+      data?.error ||
+      `Consignment auto-offer failed: ${res.status}`
     );
   }
 
