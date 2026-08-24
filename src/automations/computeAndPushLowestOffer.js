@@ -138,6 +138,17 @@ export const computeAndPushLowestOffer = {
         updates["Estimated Time"] = estimatedTimeText;
       }
       updates["Offer Accepted?"] = false;
+
+      // CHANGED - "Offer Accepted?" was already cleared here and its opposite
+      // was not, which left half the previous decision standing. The store's
+      // Offers view filters on {Offer Denied?}, so once a store had denied an
+      // offer the order stayed out of that list for good - a later, lower
+      // offer arrived in Discord but was invisible in the portal.
+      //
+      // A denial is about the offer that was on the table, not about the
+      // order. A new lowest offer is a new question.
+      updates["Offer Denied?"] = false;
+
       updates["Offer Sent?"] = true;
       updates["Offer Notes"] = isPartner
         ? "Offer Send From Partner Offers"
