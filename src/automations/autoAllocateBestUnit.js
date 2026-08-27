@@ -388,9 +388,26 @@ async function handleOutsourceFallback({
             size: String(orderSize)
           });
 
+          // FIXED - this always claimed the offer had just been created,
+          // whatever came back. Two other things can happen: the endpoint
+          // finds an offer for this stock already there, or it creates one
+          // and holds it because the consignor's price sits above what the
+          // store will pay. Both left a note saying an offer was created
+          // and, because the skip answer carried no seller fields,
+          // "Seller: - / - / EUR 0.00" over a real EUR 175 offer.
+          //
+          // The note now says which of the three happened. That sentence is
+          // the first thing anyone reads when they wonder where the offer
+          // went, so it has to be the true one.
+          const outcome = autoOffer?.skipped === "already_offered"
+            ? "Consignment auto-offer already existed for this stock"
+            : autoOffer?.held
+              ? "Consignment auto-offer created but HELD from the store: the consignor's price is above what this store pays. It stays as the benchmark other sellers must undercut"
+              : "Consignment auto-offer created as a Seller Offer";
+
           await ctx.airtable.updateRecord("Unfulfilled Orders Log", order.id, {
             Notes:
-              `Partner stock found. Consignment auto-offer created as a Seller Offer. ` +
+              `Partner stock found. ${outcome}. ` +
               `Seller: ${autoOffer?.seller_id || "-"} / ` +
               `${autoOffer?.vat_type || "-"} / ` +
               `€${Number(autoOffer?.seller_price || 0).toFixed(2)}.`,
