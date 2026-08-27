@@ -33,6 +33,51 @@ export const autoAllocateBestUnit = {
   async shouldRun(record) {
     const f = record.fields;
 
+    // Some stores hold no stock of their own and want time to check an
+    // order against their shelves before we act on it. Until that window
+    // has passed this automation does nothing at all: it does not allocate
+    // in-house stock, and it does not move the order to Outsource - the
+    // one status that puts it in front of sellers, in both card lists and
+    // in the Make embeds.
+    //
+    // Nothing is stamped either. auto_allocate_attempted_at is what stops
+    // this from running twice, so writing it here would mean the order is
+    // never picked up again.
+    //
+    // WHAT WAKES IT UP AGAIN, and why that lives somewhere else:
+    //
+    // This engine has no clock. It only ever reacts to what Airtable pushes
+    // to /webhook, so an order that is waiting has nothing to wait FOR. The
+    // clock is a cron job in the other repo -
+    // lojiq-automation-engine/src/jobs/releaseHeldOrders.js - which already
+    // had a scheduler, a health endpoint and a shadow mode. Building a
+    // second one here would have meant maintaining that twice.
+    //
+    // It does one thing: set Fulfillment Status to "Outsource" once the
+    // window is over. That write goes through the API, Airtable sends a
+    // change event for it like any other, and because "Fulfillment Status"
+    // is in watchFields above the order lands right back here - by then
+    // past its window, so it runs for real.
+    //
+    // So the two are not wired together. They meet in Airtable, the same
+    // way everything else in this engine does.
+    const holdHours = getNumber(f["Client Order Hold Hours"]);
+    const createdAt = Date.parse(f["Created Time"]);
+
+    if (
+      holdHours > 0 &&
+      Number.isFinite(createdAt) &&
+      Date.now() < createdAt + holdHours * 60 * 60 * 1000
+    ) {
+      console.log("autoAllocateBestUnit held", {
+        recordId: record.id,
+        holdHours,
+        releasesAt: new Date(createdAt + holdHours * 60 * 60 * 1000).toISOString(),
+      });
+
+      return false;
+    }
+
     const linkedInventoryUnit = f["Linked Inventory Unit"];
     const fulfillmentStatus = getSelectName(f["Fulfillment Status"]);
     const riskLevel = getSelectName(f["Match Risk Level"]);
