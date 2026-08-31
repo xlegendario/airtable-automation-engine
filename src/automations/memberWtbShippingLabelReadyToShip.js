@@ -18,7 +18,12 @@ export const memberWtbShippingLabelReadyToShip = {
 
     return (
       !!f["Shipping Label"] &&
-      ["Allocated", "Label Requested"].includes(status)
+      // The option in Airtable is "Requested Label"; this read "Label
+      // Requested", which is not one of the choices and so could never
+      // match. A label uploaded from that status left the order sitting
+      // there - no error, because a shouldRun that says no is not a
+      // failure.
+      ["Allocated", "Requested Label"].includes(status)
     );
   },
 
