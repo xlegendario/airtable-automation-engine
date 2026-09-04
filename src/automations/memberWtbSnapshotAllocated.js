@@ -1,6 +1,9 @@
-import { getSelectName, hasLinkedRecord } from "../lib/helpers.js";
+import { getSelectName, getNumber, hasLinkedRecord } from "../lib/helpers.js";
 
 const TABLE_NAME = "Member WTBs";
+
+const KICKZ_CAVIAR_PORTAL_BASE_URL =
+  process.env.KICKZ_CAVIAR_PORTAL_BASE_URL || "https://kickzcaviar.com";
 
 /*
  * Move a claimed snapshot on to Allocated once the seller has confirmed it.
@@ -16,9 +19,12 @@ const TABLE_NAME = "Member WTBs";
  * dashboard and the label could not be requested, because that flow starts from
  * Allocated.
  *
- * Prices are deliberately left alone. What the buyer pays is already worked out
- * by the offer machinery on the want-to-buy, and what we pay the seller is on
- * the unit. Neither needs a second opinion here.
+ * What the buyer pays is his own Max Price - the number he pressed Buy on, or
+ * offered, or accepted, and the number the snapshot was worked back from in the
+ * first place. It is written here only if the field is still empty, so a price
+ * negotiated by another route is never overwritten by this one.
+ *
+ * What we pay the seller stays on the unit and is not touched.
  */
 export const memberWtbSnapshotAllocated = {
   name: "memberWtbSnapshotAllocated",
@@ -50,10 +56,54 @@ export const memberWtbSnapshotAllocated = {
   },
 
   async run(record, ctx) {
-    await ctx.airtable.updateRecord(TABLE_NAME, record.id, {
-      "Fulfillment Status": "Allocated"
-    });
+    const f = record.fields;
 
-    console.log(`✅ Member WTB snapshot allocated for ${record.id}`);
+    const updates = {
+      "Fulfillment Status": "Allocated",
+      /*
+       * Confirmed as well, and not only for tidiness. The buying tabs read
+       * this, the invoice price is worked out from it, and the payment link
+       * the buyer needs hangs off the same step. Allocated on its own left
+       * the deal done but unpayable.
+       */
+      "Purchase Status": "Confirmed"
+    };
+
+    const buyerPrice = getNumber(f["Max Price"]);
+
+    if (!getNumber(f["Final Buying Price"]) && buyerPrice > 0) {
+      updates["Final Buying Price"] = buyerPrice;
+    }
+
+    await ctx.airtable.updateRecord(TABLE_NAME, record.id, updates);
+
+    /*
+     * And ask the portal for the payment link.
+     *
+     * The routes that fill a want-to-buy from stock run this themselves the
+     * moment they confirm the purchase, but a snapshot is struck in Discord
+     * and its unit is created by a scenario, so it never passes through any
+     * of them. Without this the deal reads as done and the buyer has nothing
+     * to pay against.
+     */
+    const res = await fetch(
+      `${KICKZ_CAVIAR_PORTAL_BASE_URL.replace(/\/$/, "")}/api/internal/member-wtb-payment-gate`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ member_wtb_record_id: record.id })
+      }
+    );
+
+    if (!res.ok) {
+      throw new Error(
+        `Member WTB payment gate failed: ${res.status} ${await res.text()}`
+      );
+    }
+
+    console.log(
+      `✅ Member WTB snapshot allocated for ${record.id}` +
+        (updates["Final Buying Price"] ? ` at ${buyerPrice}` : "")
+    );
   }
 };
