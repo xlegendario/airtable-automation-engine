@@ -1,4 +1,4 @@
-import { getSelectName, getNumber, hasLinkedRecord } from "../lib/helpers.js";
+import { getSelectName, hasLinkedRecord } from "../lib/helpers.js";
 
 const TABLE_NAME = "Member WTBs";
 
@@ -19,12 +19,11 @@ const KICKZ_CAVIAR_PORTAL_BASE_URL =
  * dashboard and the label could not be requested, because that flow starts from
  * Allocated.
  *
- * What the buyer pays is his own Max Price - the number he pressed Buy on, or
- * offered, or accepted, and the number the snapshot was worked back from in the
- * first place. It is written here only if the field is still empty, so a price
- * negotiated by another route is never overwritten by this one.
- *
- * What we pay the seller stays on the unit and is not touched.
+ * No price is written here. Max Price was tried and was wrong: it is the
+ * ceiling the buyer set, not the number he agreed to, and on a want-to-buy
+ * that went through an offer round the two are far apart. The price the buyer
+ * owes is known at the moment the snapshot is created, not at the moment it is
+ * claimed, so it belongs on the record from that side.
  */
 export const memberWtbSnapshotAllocated = {
   name: "memberWtbSnapshotAllocated",
@@ -69,12 +68,6 @@ export const memberWtbSnapshotAllocated = {
       "Purchase Status": "Confirmed"
     };
 
-    const buyerPrice = getNumber(f["Max Price"]);
-
-    if (!getNumber(f["Final Buying Price"]) && buyerPrice > 0) {
-      updates["Final Buying Price"] = buyerPrice;
-    }
-
     await ctx.airtable.updateRecord(TABLE_NAME, record.id, updates);
 
     /*
@@ -101,9 +94,6 @@ export const memberWtbSnapshotAllocated = {
       );
     }
 
-    console.log(
-      `✅ Member WTB snapshot allocated for ${record.id}` +
-        (updates["Final Buying Price"] ? ` at ${buyerPrice}` : "")
-    );
+    console.log(`✅ Member WTB snapshot allocated for ${record.id}`);
   }
 };
