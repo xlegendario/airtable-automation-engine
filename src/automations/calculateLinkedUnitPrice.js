@@ -75,8 +75,18 @@ export const calculateLinkedUnitPrice = {
 
     if (offerAccepted) {
       const storeName = getFirstValue(f["Store Name"]).toUpperCase();
+      /*
+       * Stores whose price is already settled before a consignor is asked.
+       *
+       * CHANGED - Woovin joins the list. A marketplace buyer has paid before
+       * we go looking for the pair, so the price on the order is the price,
+       * and deriving one from whichever consignor accepts would quote a
+       * number we were never paid.
+       */
       const isForcedOfferToStoreStore =
-        storeName === "SNEAKERASK" || storeName === "APLUG.PL";
+        storeName === "SNEAKERASK" ||
+        storeName === "WOOVIN" ||
+        storeName === "APLUG.PL";
 
       const offerToStore = toNumber(f["Offer To Store"]);
       const customOffer = toNumber(f["Custom Offer"]);
