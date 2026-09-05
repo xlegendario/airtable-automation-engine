@@ -14,9 +14,13 @@ export const unfulfilledOrderCreated = {
 
     const storeName = getFirstValue(fields["Store Name"]);
 
+    // Woovin added: a marketplace order needs no "new order" announcement
+    // in Discord, because nobody has to be told to go and buy it - the
+    // consignment service asks the consignors directly.
     const skipNewOrderDiscord =
       storeName === "APLUG.PL" ||
-      storeName === "SneakerAsk";
+      storeName === "SneakerAsk" ||
+      storeName === "Woovin";
 
     const finalSku =
       getFirstValue(fields["SKU"]) ||
