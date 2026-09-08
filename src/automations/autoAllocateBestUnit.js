@@ -494,6 +494,22 @@ function calcReturnServiceOffer(purchasePrice, vatType, maxPrice) {
   return Math.round(sellerOffer * 100) / 100;
 }
 
+// Who we are, to the Kickz Caviar portal.
+//
+// Its consignment routes took anything that arrived: this service reaches
+// them over the public hostname and sent no header at all, so anyone who
+// knew the path could create consignment offers. The portal now logs a call
+// without this and will refuse one once AUTH_ENFORCE is turned to strict, so
+// the variable has to be set here before that happens.
+const KC_PORTAL_SECRET = process.env.KC_PORTAL_SECRET || "";
+
+function kcPortalHeaders() {
+  return {
+    "Content-Type": "application/json",
+    ...(KC_PORTAL_SECRET ? { "x-kc-secret": KC_PORTAL_SECRET } : {}),
+  };
+}
+
 async function postWebhook(url, payload) {
   const res = await fetch(url, {
     method: "POST",
@@ -517,9 +533,7 @@ async function calculateConsignmentPreOffer({
     `${KICKZ_CAVIAR_PORTAL_BASE_URL.replace(/\/$/, "")}/api/consignment/pre-offer/calculate`,
     {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json"
-      },
+      headers: kcPortalHeaders(),
       body: JSON.stringify({
         order_record_id: orderRecordId,
         sku,
@@ -556,9 +570,7 @@ async function createConsignmentAutoOffer({
     `${KICKZ_CAVIAR_PORTAL_BASE_URL.replace(/\/$/, "")}/api/consignment/auto-offer/create`,
     {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json"
-      },
+      headers: kcPortalHeaders(),
       body: JSON.stringify({
         order_record_id: orderRecordId,
         sku,
