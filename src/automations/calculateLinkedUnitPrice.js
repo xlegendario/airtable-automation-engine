@@ -41,12 +41,32 @@ export const calculateLinkedUnitPrice = {
       calculatedAt: f["linked_unit_price_calculated_at"],
     });
 
+    /*
+      CHANGED - "Requested Label" was missing, and that was a race a seller
+      could win.
+
+      Confirm Deal or Process Deal sets the status, this automation is queued
+      on that change, and the seller presses Request Label in Discord a second
+      later. That moves the order to "Requested Label", which was not on this
+      list, so the run bailed out and Final Buying Price was never written.
+      Rompslomp then could not send an invoice, because there was no price on
+      it. Seen on the Quick Deals and want-to-buy channels, where the seller
+      is already sitting in the channel watching for the button.
+
+      Adding it turns the change that used to kill this into the change that
+      triggers it: "Fulfillment Status" is a watched field, so the move to
+      "Requested Label" is itself an event, and this then runs on it.
+
+      Nothing runs twice. linked_unit_price_calculated_at is written with the
+      price and is checked right here.
+    */
     return (
       hasLinkedRecord(linkedInventoryUnit) &&
       [
         "Outsource",
         "Claim Processing",
         "Confirmed",
+        "Requested Label",
         "StockX Processing",
         "GOAT Processing",
       ].includes(fulfillmentStatus) &&
@@ -292,9 +312,37 @@ export const calculateLinkedUnitPrice = {
   },
 };
 
+/*
+ * The price, and the status only if it has not already moved on.
+ *
+ * CHANGED - this always set "Allocated". Now that a late run is possible at
+ * all (see shouldRun), writing that unconditionally would drag an order that
+ * has already asked for a label back a step, and the label request would look
+ * like it never happened.
+ *
+ * So the status is only advanced from the ones that come before it. The price
+ * is written either way, because that is the whole reason for running.
+ */
+const STATUSES_BEFORE_ALLOCATED = [
+  "Outsource",
+  "Claim Processing",
+  "Confirmed",
+  "StockX Processing",
+  "GOAT Processing",
+];
+
 async function updateAllocated(order, unitId, finalPrice, ctx, { notes }) {
+  const currentStatus = getSelectName(order.fields["Fulfillment Status"]);
+  const mayAdvance = STATUSES_BEFORE_ALLOCATED.includes(currentStatus);
+
+  if (!mayAdvance) {
+    console.log(
+      `Order ${order.id} is already at "${currentStatus}", so only the price is written.`
+    );
+  }
+
   await ctx.airtable.updateRecord("Unfulfilled Orders Log", order.id, {
-    "Fulfillment Status": "Allocated",
+    ...(mayAdvance ? { "Fulfillment Status": "Allocated" } : {}),
     "Final Buying Price": finalPrice,
     Notes: notes,
     linked_unit_price_calculated_at: new Date().toISOString(),
