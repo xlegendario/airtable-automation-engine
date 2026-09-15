@@ -18,7 +18,7 @@ export const unfulfilledOrderCreated = {
     // in Discord, because nobody has to be told to go and buy it - the
     // consignment service asks the consignors directly.
     const skipNewOrderDiscord =
-      storeName === "APLUG.PL" ||
+      storeName === "bol" ||
       storeName === "SneakerAsk" ||
       storeName === "Woovin";
 
