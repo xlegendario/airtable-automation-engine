@@ -228,6 +228,22 @@ export const storeOrderFulfillmentInvoice = {
     const invoiceMode = getSelectName(m["Invoice Mode"]) || "No invoice";
     const consignment = isMarketplaceConsignment(getSelectName(f["Order Source"]));
 
+    /*
+      Invoiced by Make before this store moved over.
+
+      Make ticked Fulfillment Sent? and kept nothing else, so such an order
+      reaches this with the box ticked and no invoice of ours on it - and would
+      be invoiced a second time on its next status change. This run ticks the
+      box itself only on the way to its own invoice, and a failure of ours
+      always leaves Invoice Error behind, so the combination below is Make's.
+      Retry Invoice overrides it, for the rare case it is not.
+    */
+    const handledByMake =
+      Boolean(f["Fulfillment Sent?"]) &&
+      !f["Rompslomp Invoice ID"] &&
+      !f["Invoice Error"] &&
+      !f["Retry Invoice"];
+
     const save = async (fields) => {
       if (!live) return;
       await ctx.airtable.updateRecord(TABLE_NAME, record.id, fields);
@@ -249,6 +265,8 @@ export const storeOrderFulfillmentInvoice = {
         log(`Invoice: none (${consignment ? "marketplace consignment" : "No invoice"})`);
       } else if (invoiceMode === "Self-billing") {
         log("Invoice: none - self-billing store, waits for the collective invoice");
+      } else if (handledByMake) {
+        log("Invoice: none - already invoiced by Make");
       } else if (!f["Invoice Sent At"]) {
         await invoiceStep({ record, f, merchant, live, log, save, airtable: ctx.airtable });
       }
