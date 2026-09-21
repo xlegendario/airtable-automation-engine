@@ -186,7 +186,11 @@ async function invoiceStep({ record, f, merchant, live, log, save, airtable }) {
 export const storeOrderFulfillmentInvoice = {
   name: "storeOrderFulfillmentInvoice",
   tableName: TABLE_NAME,
-  eventTypes: ["changed"],
+  // "created" too: the orders webhook is scoped to the view All Orders (Live
+  // Orders), and a record that enters a view arrives as created. That is how
+  // a Fulfilled order that still needs us - Fulfillment Sent? unticked, or an
+  // Invoice Error - reaches this at all.
+  eventTypes: ["created", "changed"],
   watchFields: ["Fulfillment Status", "Linked Inventory Unit", "Retry Invoice"],
 
   async shouldRun(record) {
@@ -251,11 +255,17 @@ export const storeOrderFulfillmentInvoice = {
     };
 
     try {
-      if (!f["Fulfillment Sent?"] && !consignment) {
+      if (!f["Fulfillment Sent?"] && (consignment || fulfillmentMode === "None")) {
+        // Nothing to do in Shopify - but ticked all the same, so the order
+        // leaves the Live Orders view once it is Fulfilled instead of staying
+        // there for good (bol, Woovin, APLUG, marketplace consignment).
+        log("Shopify: no Shopify step for this order");
+        await save({ "Fulfillment Sent?": true });
+      } else if (!f["Fulfillment Sent?"]) {
         if (isPrivateOrder(f["Shopify Order Number"])) {
           log("Shopify: private order, no Shopify step");
           await save({ "Fulfillment Sent?": true });
-        } else if (fulfillmentMode !== "None") {
+        } else {
           await shopifyStep({ f, merchant, mode: fulfillmentMode, live, log });
           await save({ "Fulfillment Sent?": true });
         }
