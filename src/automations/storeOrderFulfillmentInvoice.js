@@ -284,14 +284,29 @@ export const storeOrderFulfillmentInvoice = {
         }
       }
 
+      /*
+        Bookkeeping Status says where the sale stands, so nothing we do not
+        invoice here can drop out of sight: a marketplace sale or a
+        self-billing store still has to reach the books, just another way.
+      */
+      const mark = async (status) => {
+        if (getSelectName(f["Bookkeeping Status"]) !== status) await save({ "Bookkeeping Status": status });
+      };
+
       if (consignment || invoiceMode === "No invoice") {
-        log(`Invoice: none (${consignment ? "marketplace consignment" : "No invoice"})`);
+        log(`Invoice: none (${consignment ? "marketplace consignment" : "No invoice"}) - to book as a marketplace sale`);
+        await mark("To book – marketplace");
       } else if (invoiceMode === "Self-billing") {
         log("Invoice: none - self-billing store, waits for the collective invoice");
+        await mark("Awaiting self-billing");
       } else if (handledByMake) {
         log("Invoice: none - already invoiced by Make");
-      } else if (!f["Invoice Sent At"]) {
-        await invoiceStep({ record, f, merchant, live, log, save, airtable: ctx.airtable });
+        await mark("Invoiced by Make");
+      } else {
+        if (!f["Invoice Sent At"]) {
+          await invoiceStep({ record, f, merchant, live, log, save, airtable: ctx.airtable });
+        }
+        await mark("Invoiced");
       }
 
       if (f["Invoice Error"] || f["Retry Invoice"]) {
