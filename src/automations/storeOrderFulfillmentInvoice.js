@@ -51,7 +51,12 @@ async function shopifyStep({ f, merchant, mode, live, log }) {
   const variantId = f["Shopify Variant ID"];
   const location = merchant.locationId;
 
-  if (!orderId || !variantId) throw new Error("the order has no Shopify Order ID or Shopify Variant ID");
+  // No Shopify order to touch - an old or hand-made order. Nothing to move
+  // or fulfil, and no reason to hold up the invoice for it.
+  if (!orderId || !variantId) {
+    log("Shopify: the order has no Shopify Order ID or Variant ID - skipped");
+    return;
+  }
   if (!location) throw new Error(`${merchant.storeName} has no Shopify Location ID`);
 
   const fulfillmentOrders = await shop.fulfillmentOrders(orderId);
