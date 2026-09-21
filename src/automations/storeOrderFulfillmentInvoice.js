@@ -89,7 +89,15 @@ async function shopifyStep({ f, merchant, mode, live, log }) {
 
     if (available !== null && available <= 0) {
       log(`Shopify: set stock at our location to 1 (was ${available})`);
-      if (live) await shop.setAvailable(pick.line.inventory_item_id, location, 1);
+
+      // A product without inventory tracking still reports a level, but
+      // refuses to have it set - and needs no stock to be moved either.
+      if (live) {
+        await shop.setAvailable(pick.line.inventory_item_id, location, 1).catch((err) => {
+          if (!/inventory tracking/i.test(err.message)) throw err;
+          log("Shopify: stock not tracked for this product - moving without it");
+        });
+      }
     }
 
     log(`Shopify: move line ${lineId} of fulfillment order ${foId} to our location`);
