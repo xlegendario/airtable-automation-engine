@@ -17,7 +17,9 @@ export const ROMPSLOMP = {
   revenueAccountPath: "profit.revenue.sneakers_custom",
   stockAccountId: 1981496874,
   stockAccountPath: "activa.current_assets.voorraad_scout_custom",
+  // Kosten • Sneakers & Streetwear | Commercieel (VAT stock) and | Marge.
   costAccountPath: "profit.costs.sneakers_custom",
+  marginCostAccountPath: "profit.costs.sneakers_marge_custom",
   marginTemplateId: 322464949
 };
 
@@ -59,6 +61,7 @@ export function invoicePlan({ vatType, storeCountry, clientCountry }) {
       withVatNumber: false,
       lineAccount: false,
       costAccountId: 1537847149,
+      costAccountPath: ROMPSLOMP.marginCostAccountPath,
       costAmountField: "Final Purchase Price"
     };
   }
@@ -133,8 +136,10 @@ export function journalEntryBody({ plan, invoice, amount }) {
       date: invoice.date,
       lines: [
         {
+          // The id decides in Rompslomp; the path is sent to match it. Make
+          // sent the Commercieel path with the Marge id - harmless, but wrong.
           account_id: plan.costAccountId,
-          account_path: ROMPSLOMP.costAccountPath,
+          account_path: plan.costAccountPath || ROMPSLOMP.costAccountPath,
           debit_amount: String(amount),
           credit_amount: null
         },
