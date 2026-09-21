@@ -24,6 +24,7 @@ import { memberWtbShippingLabelReadyToShip } from "./automations/memberWtbShippi
 import { memberWtbSendShippingLabelToDiscord } from "./automations/memberWtbSendShippingLabelToDiscord.js";
 import { memberWtbSnapshotAllocated } from "./automations/memberWtbSnapshotAllocated.js";
 import { computeAndPushLowestOffer } from "./automations/computeAndPushLowestOffer.js";
+import { storeOrderFulfillmentInvoice } from "./automations/storeOrderFulfillmentInvoice.js";
 
 export const automations = [
   unfulfilledOrderCreated,
@@ -50,4 +51,5 @@ export const automations = [
   memberWtbSendShippingLabelToDiscord,
   memberWtbSnapshotAllocated,
   computeAndPushLowestOffer,
+  storeOrderFulfillmentInvoice,
 ];
