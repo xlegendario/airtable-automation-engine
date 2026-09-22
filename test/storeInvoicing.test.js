@@ -148,3 +148,16 @@ test("private orders and marketplace consignment are recognised", () => {
   assert.equal(isMarketplaceConsignment("SneakerAsk Consignment"), true);
   assert.equal(isMarketplaceConsignment("Shopify"), false);
 });
+
+test("a store order invoice is due in 7 days, dated in Dutch time", async () => {
+  const { invoiceDates, salesInvoiceBody, invoicePlan } = await import("../src/lib/storeInvoicing.js");
+  assert.deepEqual(invoiceDates(new Date("2026-09-30T23:30:00Z")), { date: "2026-10-01", due_date: "2026-10-08" });
+  const body = salesInvoiceBody({
+    plan: invoicePlan({ vatType: "Margin" }),
+    order: { orderId: "ORD-1", productName: "Shoe", size: "42", finalBuyingPrice: 100 },
+    contact: { id: 1 },
+    now: new Date("2026-09-22T10:00:00Z")
+  }).sales_invoice;
+  assert.equal(body.date, "2026-09-22");
+  assert.equal(body.due_date, "2026-09-29");
+});

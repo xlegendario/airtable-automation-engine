@@ -93,8 +93,20 @@ export function invoicePlan({ vatType, storeCountry, clientCountry }) {
   return null;
 }
 
-// The sales invoice body Make posted, for one order.
-export function salesInvoiceBody({ plan, order, contact, apiReference = null }) {
+// Invoices are due in 7 days, always (Dario, 22-09-2026) - sent with the
+// invoice so it never depends on Rompslomp's company setting, and dated in
+// Dutch time so one made just after midnight is not a day off.
+export const PAYMENT_DAYS = 7;
+
+export function invoiceDates(now = new Date()) {
+  const today = new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Amsterdam" }).format(now);
+  const due = new Date(`${today}T12:00:00Z`);
+  due.setUTCDate(due.getUTCDate() + PAYMENT_DAYS);
+  return { date: today, due_date: due.toISOString().slice(0, 10) };
+}
+
+// The sales invoice body Make posted, for one order - plus the 7-day term.
+export function salesInvoiceBody({ plan, order, contact, apiReference = null, now = new Date() }) {
   const line = {
     description: String(order.productName || ""),
     extended_description: String(order.size || ""),
@@ -111,6 +123,7 @@ export function salesInvoiceBody({ plan, order, contact, apiReference = null }) 
 
   return {
     sales_invoice: {
+      ...invoiceDates(now),
       payment_method: "pay_transfer",
       description: String(order.orderId || ""),
       contact_id: contact.id,
