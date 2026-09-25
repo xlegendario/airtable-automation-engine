@@ -102,10 +102,14 @@ export const calculateLinkedUnitPrice = {
        * we go looking for the pair, so the price on the order is the price,
        * and deriving one from whichever consignor accepts would quote a
        * number we were never paid.
+       *
+       * Hypeneedz for the same reason: the order carries the purchase price
+       * they pay us, set when the pair was listed.
        */
       const isForcedOfferToStoreStore =
         storeName === "SNEAKERASK" ||
         storeName === "WOOVIN" ||
+        storeName === "HYPENEEDZ" ||
         storeName === "APLUG.PL";
 
       const offerToStore = toNumber(f["Offer To Store"]);

@@ -20,7 +20,8 @@ export const unfulfilledOrderCreated = {
     const skipNewOrderDiscord =
       storeName === "bol" ||
       storeName === "SneakerAsk" ||
-      storeName === "Woovin";
+      storeName === "Woovin" ||
+      storeName === "Hypeneedz";
 
     const finalSku =
       getFirstValue(fields["SKU"]) ||
