@@ -93,59 +93,80 @@ export const calculateLinkedUnitPrice = {
 
     const offerAccepted = !!f["Offer Accepted?"];
 
-    if (offerAccepted) {
-      const storeName = getFirstValue(f["Store Name"]).toUpperCase();
-      /*
-       * Stores whose price is already settled before a consignor is asked.
-       *
-       * CHANGED - Woovin joins the list. A marketplace buyer has paid before
-       * we go looking for the pair, so the price on the order is the price,
-       * and deriving one from whichever consignor accepts would quote a
-       * number we were never paid.
-       *
-       * Hypeneedz for the same reason: the order carries the purchase price
-       * they pay us, set when the pair was listed.
-       */
-      const isForcedOfferToStoreStore =
-        storeName === "SNEAKERASK" ||
-        storeName === "WOOVIN" ||
-        storeName === "HYPENEEDZ" ||
-        storeName === "APLUG.PL";
+    const storeName = getFirstValue(f["Store Name"]).toUpperCase();
+    /*
+     * Stores whose price is already settled before a consignor is asked.
+     *
+     * CHANGED - Woovin joins the list. A marketplace buyer has paid before
+     * we go looking for the pair, so the price on the order is the price,
+     * and deriving one from whichever consignor accepts would quote a
+     * number we were never paid.
+     *
+     * Hypeneedz for the same reason: the order carries the purchase price
+     * they pay us, set when the pair was listed.
+     */
+    const isForcedOfferToStoreStore =
+      storeName === "SNEAKERASK" ||
+      storeName === "WOOVIN" ||
+      storeName === "HYPENEEDZ" ||
+      storeName === "APLUG.PL";
 
-      const offerToStore = toNumber(f["Offer To Store"]);
-      const customOffer = toNumber(f["Custom Offer"]);
+    const offerToStore = toNumber(f["Offer To Store"]);
+    const customOffer = toNumber(f["Custom Offer"]);
 
-      const offerVatTypeName = getSelectName(f["Offer VAT Type"]);
-      const offerVatTypeNorm = normVatType(offerVatTypeName);
+    const offerVatTypeName = getSelectName(f["Offer VAT Type"]);
+    const offerVatTypeNorm = normVatType(offerVatTypeName);
 
-      const clientCountry = getFirstValue(f["Client Country"]);
-      const clientCountryNorm = normCountry(clientCountry);
+    const clientCountry = getFirstValue(f["Client Country"]);
+    const clientCountryNorm = normCountry(clientCountry);
 
-      const applyVatConversionIfNeeded = (price) => {
-        let netPrice = price;
+    const applyVatConversionIfNeeded = (price) => {
+      let netPrice = price;
 
-        if (
-          clientCountryNorm.includes("netherland") &&
-          offerVatTypeNorm === "VAT21"
-        ) {
-          netPrice = price / 1.21;
-        }
+      if (
+        clientCountryNorm.includes("netherland") &&
+        offerVatTypeNorm === "VAT21"
+      ) {
+        netPrice = price / 1.21;
+      }
 
-        return round2(netPrice);
-      };
+      return round2(netPrice);
+    };
 
-      // A) SneakerAsk / APLUG.PL always use Offer To Store
-      if (isForcedOfferToStoreStore && offerToStore != null) {
-        const finalPrice = applyVatConversionIfNeeded(offerToStore);
+    /*
+     * A) A marketplace order carries its own price, accepted offer or not.
+     *
+     * CHANGED - this sat inside "Offer Accepted?" and so only ever ran for a
+     * negotiated deal. A Claim Deal has no offer to accept: somebody takes
+     * the payout as it stands, Confirm Deal makes the unit, and this dropped
+     * through to the ordinary sum below - which needs Target and Maximum
+     * Buying Price, and a marketplace order has neither, because nothing was
+     * ever negotiated. Three attempts later it wrote "Missing Target/Max"
+     * into Notes and stopped, leaving the order on "Claim Processing" with no
+     * Final Buying Price and no invoice behind it. ORD-026465 (Woovin) sat
+     * there until it was moved by hand.
+     *
+     * The price was on the order the whole time. Offer To Store first and
+     * Custom Offer behind it, the order of preference this branch always had
+     * for these stores.
+     */
+    if (isForcedOfferToStoreStore) {
+      const settledPrice = offerToStore ?? customOffer;
+
+      if (settledPrice != null) {
+        const finalPrice = applyVatConversionIfNeeded(settledPrice);
 
         await updateAllocated(order, unitId, finalPrice, ctx, {
-          notes:
-            "Forced: Store is SneakerAsk/APLUG.PL and Offer Accepted → used Offer To Store.",
+          notes: `Forced: ${storeName} sets its own price → used ${
+            offerToStore != null ? "Offer To Store" : "Custom Offer"
+          }.`,
         });
 
         return;
       }
+    }
 
+    if (offerAccepted) {
       // B) Custom Offer wins
       // FIXED — this used to prefer offerToStore (the "Offer To Store"
       // FORMULA field, which rounds to the nearest €2.50) over the
@@ -243,10 +264,18 @@ export const calculateLinkedUnitPrice = {
           continue;
         }
     
+        /*
+         * No stamp on a failure, so a later change gets another go.
+         *
+         * linked_unit_price_calculated_at is what keeps this from running
+         * twice, and writing it here kept it from ever running again -
+         * shouldRun demands the field be empty. An order that failed once was
+         * frozen, even after somebody filled in the very price it said was
+         * missing. Only a run that wrote a price is done.
+         */
         await ctx.airtable.updateRecord("Unfulfilled Orders Log", order.id, {
           Notes:
             "❌ Could not calculate final price. Missing Target/Max/Ideal/Min/Purchase price.",
-          linked_unit_price_calculated_at: new Date().toISOString(),
         });
     
         return;
@@ -305,10 +334,11 @@ export const calculateLinkedUnitPrice = {
     }
     
     if (!success) {
+      // Same reasoning as above: a price that does not add up today may add
+      // up once somebody corrects it, and a stamp here would hide that.
       await ctx.airtable.updateRecord("Unfulfilled Orders Log", order.id, {
         Notes:
           "❌ Could not calculate a valid final price after 3 attempts. Check Target/Max vs Ideal/Min.",
-        linked_unit_price_calculated_at: new Date().toISOString(),
       });
     
     console.log("❌ Failed after 3 attempts.");
