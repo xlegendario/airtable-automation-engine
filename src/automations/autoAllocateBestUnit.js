@@ -373,6 +373,23 @@ async function handleOutsourceFallback({
     if (match) {
       const partnerLevel = getNumber(match.fields["Partner Stock Level"]);
       partnerHasStock = typeof partnerLevel === "number" && partnerLevel > 0;
+    }
+
+    /*
+     * En als die teller niets weet, de voorraad zelf vragen.
+     *
+     * "Partner Stock Level" wordt bijgehouden zodra voorraad via onze eigen
+     * routes verandert. De voorraad van een leverancier komt rechtstreeks uit
+     * zijn catalogus in Supabase en passeert die routes nooit, dus die teller
+     * staat op nul terwijl het paar er wel degelijk ligt - en dan ging deze
+     * order naar Outsource alsof niemand hem had.
+     *
+     * De portal leest diezelfde voorraad en antwoordt in één vraag. Een
+     * onbereikbare portal verandert niets: dan blijft het antwoord wat de
+     * teller zei.
+     */
+    if (!partnerHasStock) {
+      partnerHasStock = await anyConsignmentStock(skuCandidate, String(orderSize));
 
       if (partnerHasStock) {
         if (isAutoOfferAccept) {
@@ -559,6 +576,44 @@ async function calculateConsignmentPreOffer({
 // Seller Offer in the portal, where the Supabase client lives; this
 // engine has none. calculateConsignmentPreOffer is left in place until
 // the cleanup step so reverting is a one-line change.
+/*
+ * Heeft iemand dit paar liggen, volgens de voorraad zelf?
+ *
+ * Alleen gesteld als de teller in Airtable nee zegt, want dat is de
+ * goedkope vraag. Een fout antwoord hier mag nooit een order ophouden, dus
+ * alles wat misgaat leest als "nee" en de order loopt zijn gewone weg.
+ */
+async function anyConsignmentStock(sku, size) {
+  if (!sku || !size) return false;
+
+  try {
+    const url =
+      `${KICKZ_CAVIAR_PORTAL_BASE_URL.replace(/\/$/, "")}/api/consignment/stock/has?` +
+      new URLSearchParams({ sku, size }).toString();
+
+    const res = await fetch(url, {
+      headers: { "x-kc-secret": process.env.COUNTER_OFFERS_SECRET || "" }
+    });
+
+    if (!res.ok) return false;
+
+    const data = await res.json();
+
+    if (data?.has) {
+      console.log(
+        `Consignment stock found outside the counter: ${sku} ${size} ` +
+          `(${data.seller_id}, ${data.lead_time_days || 2} days)`
+      );
+    }
+
+    return !!data?.has;
+  } catch (err) {
+    console.error(`Could not ask the portal about ${sku} ${size}:`, err.message);
+
+    return false;
+  }
+}
+
 async function createConsignmentAutoOffer({
   orderRecordId,
   sku,
