@@ -13,6 +13,55 @@ function getEstimatedTimeText(isPartner) {
   return isPartner ? ESTIMATED_TIME_PARTNER : ESTIMATED_TIME_SELLER;
 }
 
+/*
+ * A seller who is not one of those two, because he says so himself.
+ *
+ * The two lines above answer for almost everyone, and they are wrong for a
+ * supplier who ships from his own shelf abroad: Pearl needs five days where
+ * a consignor needs two, and a store that reads "24 - 72 hours" on the offer
+ * has been told something we cannot keep.
+ *
+ * So the exception lives on the seller record, in "Estimated Time", and an
+ * empty one changes nothing at all - which is the point. Nobody who is fine
+ * today is touched, and a supplier who gets faster is one field in Airtable
+ * rather than a deploy.
+ *
+ * Cached for ten minutes because this runs on every offer that lands, and
+ * a seller's delivery time does not change between two orders.
+ */
+const SELLER_ETA_TTL_MS = 10 * 60 * 1000;
+
+const sellerEtaCache = new Map();
+
+async function getSellerEstimatedTime(ctx, sellerId) {
+  const id = String(sellerId || "").trim();
+
+  if (!id) return "";
+
+  const cached = sellerEtaCache.get(id);
+
+  if (cached && Date.now() - cached.at < SELLER_ETA_TTL_MS) return cached.text;
+
+  let text = "";
+
+  try {
+    const rows = await ctx.airtable.listRecords("Sellers Database", {
+      filterByFormula: `{Seller ID} = '${id.replace(/'/g, "\\'")}'`,
+      fields: ["Estimated Time"],
+    });
+
+    text = String(rows?.[0]?.fields?.["Estimated Time"] || "").trim();
+  } catch (err) {
+    // An unreadable record must not hold up an offer: the default below is
+    // what every order got until today anyway.
+    console.error(`Could not read the delivery time of ${id}:`, err.message);
+  }
+
+  sellerEtaCache.set(id, { at: Date.now(), text });
+
+  return text;
+}
+
 // FIXED — VAT-normalization for cross-VAT comparison. Convention
 // (confirmed, matches the rest of the codebase): VAT0 is exclusive, so
 // it must be multiplied by 1.21 to sit on the same comparable scale;
@@ -133,7 +182,9 @@ export const computeAndPushLowestOffer = {
 
       updates["Lowest Offer"] = amount;
       updates["Offer VAT Type"] = vatType;
-      const estimatedTimeText = getEstimatedTimeText(isPartner);
+      const estimatedTimeText =
+        (await getSellerEstimatedTime(ctx, getFirstValue(f["Lowest Offer Seller ID"]))) ||
+        getEstimatedTimeText(isPartner);
       if (estimatedTimeText) {
         updates["Estimated Time"] = estimatedTimeText;
       }
