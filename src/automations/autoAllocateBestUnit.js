@@ -591,9 +591,10 @@ async function anyConsignmentStock(sku, size) {
       `${KICKZ_CAVIAR_PORTAL_BASE_URL.replace(/\/$/, "")}/api/consignment/stock/has?` +
       new URLSearchParams({ sku, size }).toString();
 
-    const res = await fetch(url, {
-      headers: { "x-kc-secret": process.env.COUNTER_OFFERS_SECRET || "" }
-    });
+    // Hetzelfde geheim waarmee deze dienst de portal al aanspreekt. Een
+    // tweede variabele voor dezelfde sleutel is een tweede plek die kan
+    // verlopen.
+    const res = await fetch(url, { headers: kcPortalHeaders() });
 
     if (!res.ok) return false;
 
