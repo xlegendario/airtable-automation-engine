@@ -376,17 +376,17 @@ async function handleOutsourceFallback({
     }
 
     /*
-     * En als die teller niets weet, de voorraad zelf vragen.
+     * And when that counter knows nothing, ask the stock itself.
      *
-     * "Partner Stock Level" wordt bijgehouden zodra voorraad via onze eigen
-     * routes verandert. De voorraad van een leverancier komt rechtstreeks uit
-     * zijn catalogus in Supabase en passeert die routes nooit, dus die teller
-     * staat op nul terwijl het paar er wel degelijk ligt - en dan ging deze
-     * order naar Outsource alsof niemand hem had.
+     * "Partner Stock Level" is kept up to date as soon as stock changes
+     * through our own routes. A supplier's stock comes straight from their
+     * catalogue in Supabase and never passes those routes, so that counter
+     * sits at zero while the pair is very much on the shelf - and this order
+     * then went to Outsource as if nobody had it.
      *
-     * De portal leest diezelfde voorraad en antwoordt in één vraag. Een
-     * onbereikbare portal verandert niets: dan blijft het antwoord wat de
-     * teller zei.
+     * The portal reads that same stock and answers in one question. An
+     * unreachable portal changes nothing: the answer then stays whatever the
+     * counter said.
      */
     if (!partnerHasStock) {
       partnerHasStock = await anyConsignmentStock(skuCandidate, String(orderSize));
@@ -577,11 +577,11 @@ async function calculateConsignmentPreOffer({
 // engine has none. calculateConsignmentPreOffer is left in place until
 // the cleanup step so reverting is a one-line change.
 /*
- * Heeft iemand dit paar liggen, volgens de voorraad zelf?
+ * Does anyone have this pair on the shelf, according to the stock itself?
  *
- * Alleen gesteld als de teller in Airtable nee zegt, want dat is de
- * goedkope vraag. Een fout antwoord hier mag nooit een order ophouden, dus
- * alles wat misgaat leest als "nee" en de order loopt zijn gewone weg.
+ * Only asked when the counter in Airtable says no, because that is the cheap
+ * question. A wrong answer here must never hold an order up, so anything that
+ * goes wrong reads as "no" and the order runs its usual course.
  */
 async function anyConsignmentStock(sku, size) {
   if (!sku || !size) return false;
@@ -591,9 +591,8 @@ async function anyConsignmentStock(sku, size) {
       `${KICKZ_CAVIAR_PORTAL_BASE_URL.replace(/\/$/, "")}/api/consignment/stock/has?` +
       new URLSearchParams({ sku, size }).toString();
 
-    // Hetzelfde geheim waarmee deze dienst de portal al aanspreekt. Een
-    // tweede variabele voor dezelfde sleutel is een tweede plek die kan
-    // verlopen.
+    // The same secret this service already talks to the portal with. A
+    // second variable for the same key is a second place that can expire.
     const res = await fetch(url, { headers: kcPortalHeaders() });
 
     if (!res.ok) return false;
