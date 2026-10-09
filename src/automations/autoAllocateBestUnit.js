@@ -390,94 +390,94 @@ async function handleOutsourceFallback({
      */
     if (!partnerHasStock) {
       partnerHasStock = await anyConsignmentStock(skuCandidate, String(orderSize));
+    }
 
-      if (partnerHasStock) {
-        if (isAutoOfferAccept) {
-          // CHANGED — Route B now creates a real Seller Offer too, but
-          // HELD: excluded from the Lowest Seller Offer rollups, so this
-          // auto-accepting store neither sees it nor closes on it while
-          // the consignor has not yet confirmed he still has the pair.
-          //
-          // Creating it up front rather than on his reply is deliberate:
-          // the bot's undercut check reads Seller Offer records directly,
-          // so a held offer still forces the next seller to come in lower.
-          // Without it a seller could bid ABOVE the consignment price and
-          // hand the store a worse number than what is already in stock.
-          //
-          // No ordering hazard here, unlike Route A: a held offer changes
-          // none of the rollups, so computeAndPushLowestOffer sees nothing
-          // until the hold is lifted — by which time the status below has
-          // long been set.
-          await createConsignmentAutoOffer({
-            orderRecordId: order.id,
-            sku: skuCandidate,
-            size: String(orderSize),
-            hold: true,
-            maximumBuyingPrice: maxPrice ?? null
-          });
-        } else {
-          // CHANGED — the consignment pre-offer is now a real Seller
-          // Offer. Everything this branch used to write onto the order
-          // by hand ("Lowest Offer", "Offer VAT Type", "Estimated
-          // Time", "Offer Sent?") is written by computeAndPushLowestOffer
-          // once that offer lands in the rollup — the same path every
-          // regular seller takes. The store therefore sees the same
-          // amount: "Offer To Store" applies the margin and
-          // computeQualifyingOffer applies the country/VAT relabeling,
-          // both from "Lowest Offer", exactly as before.
-          //
-          // ORDER MATTERS, and not obviously. computeAndPushLowestOffer
-          // only runs when the order is already on "Outsource" (its
-          // shouldRun), and "Fulfillment Status" is NOT among its
-          // watchFields — so if the Seller Offer landed while this
-          // order was still "Pending", that rollup event would be
-          // dropped and setting "Outsource" afterwards would never
-          // re-fire it. Status first means the rollup change always
-          // arrives on an order that qualifies.
-          await ctx.airtable.updateRecord("Unfulfilled Orders Log", order.id, {
-            "Fulfillment Status": "Outsource",
-          });
+    if (partnerHasStock) {
+      if (isAutoOfferAccept) {
+        // CHANGED — Route B now creates a real Seller Offer too, but
+        // HELD: excluded from the Lowest Seller Offer rollups, so this
+        // auto-accepting store neither sees it nor closes on it while
+        // the consignor has not yet confirmed he still has the pair.
+        //
+        // Creating it up front rather than on his reply is deliberate:
+        // the bot's undercut check reads Seller Offer records directly,
+        // so a held offer still forces the next seller to come in lower.
+        // Without it a seller could bid ABOVE the consignment price and
+        // hand the store a worse number than what is already in stock.
+        //
+        // No ordering hazard here, unlike Route A: a held offer changes
+        // none of the rollups, so computeAndPushLowestOffer sees nothing
+        // until the hold is lifted — by which time the status below has
+        // long been set.
+        await createConsignmentAutoOffer({
+          orderRecordId: order.id,
+          sku: skuCandidate,
+          size: String(orderSize),
+          hold: true,
+          maximumBuyingPrice: maxPrice ?? null
+        });
+      } else {
+        // CHANGED — the consignment pre-offer is now a real Seller
+        // Offer. Everything this branch used to write onto the order
+        // by hand ("Lowest Offer", "Offer VAT Type", "Estimated
+        // Time", "Offer Sent?") is written by computeAndPushLowestOffer
+        // once that offer lands in the rollup — the same path every
+        // regular seller takes. The store therefore sees the same
+        // amount: "Offer To Store" applies the margin and
+        // computeQualifyingOffer applies the country/VAT relabeling,
+        // both from "Lowest Offer", exactly as before.
+        //
+        // ORDER MATTERS, and not obviously. computeAndPushLowestOffer
+        // only runs when the order is already on "Outsource" (its
+        // shouldRun), and "Fulfillment Status" is NOT among its
+        // watchFields — so if the Seller Offer landed while this
+        // order was still "Pending", that rollup event would be
+        // dropped and setting "Outsource" afterwards would never
+        // re-fire it. Status first means the rollup change always
+        // arrives on an order that qualifies.
+        await ctx.airtable.updateRecord("Unfulfilled Orders Log", order.id, {
+          "Fulfillment Status": "Outsource",
+        });
 
-          // auto_allocate_attempted_at is stamped AFTER the offer
-          // exists, deliberately. If the call below throws, the order
-          // stays on Outsource without the stamp, so shouldRun still
-          // passes and the next event retries it. The portal endpoint
-          // carries a duplicate guard, so a retry cannot produce a
-          // second Seller Offer for the same stock.
-          const autoOffer = await createConsignmentAutoOffer({
-            orderRecordId: order.id,
-            sku: skuCandidate,
-            size: String(orderSize)
-          });
+        // auto_allocate_attempted_at is stamped AFTER the offer
+        // exists, deliberately. If the call below throws, the order
+        // stays on Outsource without the stamp, so shouldRun still
+        // passes and the next event retries it. The portal endpoint
+        // carries a duplicate guard, so a retry cannot produce a
+        // second Seller Offer for the same stock.
+        const autoOffer = await createConsignmentAutoOffer({
+          orderRecordId: order.id,
+          sku: skuCandidate,
+          size: String(orderSize)
+        });
 
-          // FIXED - this always claimed the offer had just been created,
-          // whatever came back. Two other things can happen: the endpoint
-          // finds an offer for this stock already there, or it creates one
-          // and holds it because the consignor's price sits above what the
-          // store will pay. Both left a note saying an offer was created
-          // and, because the skip answer carried no seller fields,
-          // "Seller: - / - / EUR 0.00" over a real EUR 175 offer.
-          //
-          // The note now says which of the three happened. That sentence is
-          // the first thing anyone reads when they wonder where the offer
-          // went, so it has to be the true one.
-          const outcome = autoOffer?.skipped === "already_offered"
-            ? "Consignment auto-offer already existed for this stock"
-            : autoOffer?.held
-              ? "Consignment auto-offer created but HELD from the store: the consignor's price is above what this store pays. It stays as the benchmark other sellers must undercut"
-              : "Consignment auto-offer created as a Seller Offer";
+        // FIXED - this always claimed the offer had just been created,
+        // whatever came back. Two other things can happen: the endpoint
+        // finds an offer for this stock already there, or it creates one
+        // and holds it because the consignor's price sits above what the
+        // store will pay. Both left a note saying an offer was created
+        // and, because the skip answer carried no seller fields,
+        // "Seller: - / - / EUR 0.00" over a real EUR 175 offer.
+        //
+        // The note now says which of the three happened. That sentence is
+        // the first thing anyone reads when they wonder where the offer
+        // went, so it has to be the true one.
+        const outcome = autoOffer?.skipped === "already_offered"
+          ? "Consignment auto-offer already existed for this stock"
+          : autoOffer?.held
+            ? "Consignment auto-offer created but HELD from the store: the consignor's price is above what this store pays. It stays as the benchmark other sellers must undercut"
+            : "Consignment auto-offer created as a Seller Offer";
 
-          await ctx.airtable.updateRecord("Unfulfilled Orders Log", order.id, {
-            Notes:
-              `Partner stock found. ${outcome}. ` +
-              `Seller: ${autoOffer?.seller_id || "-"} / ` +
-              `${autoOffer?.vat_type || "-"} / ` +
-              `€${Number(autoOffer?.seller_price || 0).toFixed(2)}.`,
-            auto_allocate_attempted_at: new Date().toISOString(),
-          });
+        await ctx.airtable.updateRecord("Unfulfilled Orders Log", order.id, {
+          Notes:
+            `Partner stock found. ${outcome}. ` +
+            `Seller: ${autoOffer?.seller_id || "-"} / ` +
+            `${autoOffer?.vat_type || "-"} / ` +
+            `€${Number(autoOffer?.seller_price || 0).toFixed(2)}.`,
+          auto_allocate_attempted_at: new Date().toISOString(),
+        });
 
-          return;
-        }
+        return;
       }
     }
   }
