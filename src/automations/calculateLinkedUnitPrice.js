@@ -60,17 +60,36 @@ export const calculateLinkedUnitPrice = {
       Nothing runs twice. linked_unit_price_calculated_at is written with the
       price and is checked right here.
     */
+    /*
+      CHANGED - the same race, one step further, on a marketplace order.
+
+      Woovin, SneakerAsk and bol already have the label, so Request Label
+      does not wait for a store: the label lands in seconds and the order is
+      on "Ready to Ship" before this automation reads it. ORD-028347: Confirmed
+      at 07:59:01, Ready to Ship at 07:59:17, no Final Buying Price and a unit
+      without Selling Method, so none of its profit formulas computed.
+
+      The later statuses only count while nothing is priced yet. An old order
+      sitting there without the stamp may carry a price set by hand, and that
+      one must not be overwritten. updateAllocated already leaves the status
+      alone once it is past Allocated.
+    */
+    const pricedYet = !!f["linked_unit_price_calculated_at"];
+    const lateStatus =
+      ["Awaiting Label", "Ready to Ship"].includes(fulfillmentStatus) &&
+      !(Number(f["Final Buying Price"]) > 0);
+
     return (
       hasLinkedRecord(linkedInventoryUnit) &&
-      [
+      ([
         "Outsource",
         "Claim Processing",
         "Confirmed",
         "Requested Label",
         "StockX Processing",
         "GOAT Processing",
-      ].includes(fulfillmentStatus) &&
-      !f["linked_unit_price_calculated_at"]
+      ].includes(fulfillmentStatus) || lateStatus) &&
+      !pricedYet
     );
   },
 
