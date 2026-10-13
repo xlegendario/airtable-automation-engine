@@ -123,11 +123,16 @@ export const calculateLinkedUnitPrice = {
      *
      * Hypeneedz for the same reason: the order carries the purchase price
      * they pay us, set when the pair was listed.
+     *
+     * And bol, which was missing: a claimed bol deal fell through to the
+     * Target/Max sum a marketplace order never has. ORD-027675 shipped and
+     * was delivered with no Final Buying Price and a unit without a price.
      */
     const isForcedOfferToStoreStore =
       storeName === "SNEAKERASK" ||
       storeName === "WOOVIN" ||
       storeName === "HYPENEEDZ" ||
+      storeName === "BOL" ||
       storeName === "APLUG.PL";
 
     const offerToStore = toNumber(f["Offer To Store"]);
