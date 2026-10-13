@@ -310,8 +310,17 @@ export const storeOrderFulfillmentInvoice = {
         if (getSelectName(f["Bookkeeping Status"]) !== status) await save({ "Bookkeeping Status": status });
       };
 
-      if (consignment || invoiceMode === "No invoice") {
-        log(`Invoice: none (${consignment ? "marketplace consignment" : "No invoice"}) - to book as a marketplace sale`);
+      /*
+        CHANGED - the store decides, not the Order Source.
+
+        Every "... Consignment" order was booked as a marketplace sale, a rule
+        carried over from Make. For bol and Woovin that changed nothing - they
+        are on No invoice anyway - but SneakerAsk is on Send invoice and its
+        consignment sales were never invoiced: fourteen of them by 13-10-2026.
+        Invoice Mode on Merchants already says what each store gets.
+      */
+      if (invoiceMode === "No invoice") {
+        log("Invoice: none (No invoice) - to book as a marketplace sale");
         await mark("To book – marketplace");
       } else if (invoiceMode === "Self-billing") {
         log("Invoice: none - self-billing store, waits for the collective invoice");
