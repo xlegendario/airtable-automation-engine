@@ -101,7 +101,24 @@ async function shopifyStep({ f, merchant, mode, live, log }) {
     }
 
     log(`Shopify: move line ${lineId} of fulfillment order ${foId} to our location`);
-    if (live) await shop.move(foId, lineId, location);
+
+    /*
+      A product the store never stocked at our location cannot be moved there,
+      and stocking it ourselves would put inventory in their Shopify they did
+      not ask for. So the move is skipped and the invoice goes on without it:
+      the store fulfils its own order either way. ORD-027960 stopped here on
+      "None of the items are stocked at the new location", with no Fulfilment
+      Date and no invoice behind it.
+    */
+    if (live) {
+      try {
+        await shop.move(foId, lineId, location);
+      } catch (err) {
+        if (!/not stocked at the new location|none of the items are stocked/i.test(err.message)) throw err;
+        log("Shopify: product not stocked at our location - move skipped");
+        return;
+      }
+    }
 
     if (pick.pickup) {
       log("Shopify: mark ready for pick-up");
