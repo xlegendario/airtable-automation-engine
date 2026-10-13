@@ -167,9 +167,19 @@ export function journalEntryBody({ plan, invoice, amount }) {
   };
 }
 
+// Invoice Email may hold several addresses, separated by a comma or a
+// semicolon (Hypeneedz wants it sent to two). SendGrid takes each as its own
+// recipient and refuses the whole line as one address.
+export const invoiceRecipients = (to) =>
+  String(to || "")
+    .split(/[,;]/)
+    .map((email) => email.trim())
+    .filter(Boolean)
+    .map((email) => ({ email }));
+
 export function invoiceMail({ plan, storeName, shopifyOrderNumber, to, pdfBase64 }) {
   return {
-    personalizations: [{ to: [{ email: to }], subject: `Your ${plan.label} Invoice For Order #${shopifyOrderNumber}` }],
+    personalizations: [{ to: invoiceRecipients(to), subject: `Your ${plan.label} Invoice For Order #${shopifyOrderNumber}` }],
     from: { email: "info@kickzcaviar.nl", name: "Kickz Caviar" },
     content: [
       {

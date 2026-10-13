@@ -114,6 +114,12 @@ test("the mail has Make's subject and attachment name", () => {
   assert.equal(mail.personalizations[0].subject, "Your VAT0 Invoice For Order ##1001");
   assert.equal(mail.attachments[0].filename, "Purchase Invoice #1001.pdf");
   assert.equal(mail.from.email, "info@kickzcaviar.nl");
+  assert.deepEqual(mail.personalizations[0].to, [{ email: "a@b.nl" }]);
+});
+
+test("an Invoice Email with two addresses mails both", () => {
+  const mail = invoiceMail({ plan: { label: "Margin" }, storeName: "Hypeneedz", shopifyOrderNumber: "1", to: " a@b.nl, c@d.de ;", pdfBase64: "UEQ=" });
+  assert.deepEqual(mail.personalizations[0].to, [{ email: "a@b.nl" }, { email: "c@d.de" }]);
 });
 
 test("the exact store name wins over the first search result", () => {
