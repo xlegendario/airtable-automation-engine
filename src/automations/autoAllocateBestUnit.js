@@ -405,10 +405,27 @@ async function handleOutsourceFallback({
         // Without it a seller could bid ABOVE the consignment price and
         // hand the store a worse number than what is already in stock.
         //
-        // No ordering hazard here, unlike Route A: a held offer changes
-        // none of the rollups, so computeAndPushLowestOffer sees nothing
-        // until the hold is lifted — by which time the status below has
-        // long been set.
+        // CHANGED — the status is set first here too, and the old note
+        // saying it did not have to be is now wrong.
+        //
+        // It said there was no ordering hazard because a held offer changes
+        // no rollup. That stopped being true: the portal now lets an offer
+        // through to the store when the consignor is a supplier who answers
+        // through an API and sits above the ceiling — there is nothing to
+        // counter him with, so the store is asked instead. Such an offer
+        // DOES land in the rollup, and the same trap as Route A then
+        // applies: computeAndPushLowestOffer only runs on an order already
+        // on Outsource, and Fulfillment Status is not among its watchFields,
+        // so a rollup change that arrives first is dropped and never comes
+        // back.
+        //
+        // Setting it first costs nothing — the update at the end of this
+        // function sets the same value again — and means the offer cannot
+        // arrive too early.
+        await ctx.airtable.updateRecord("Unfulfilled Orders Log", order.id, {
+          "Fulfillment Status": "Outsource",
+        });
+
         await createConsignmentAutoOffer({
           orderRecordId: order.id,
           sku: skuCandidate,
