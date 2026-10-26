@@ -21,7 +21,8 @@ export const unfulfilledOrderCreated = {
       storeName === "bol" ||
       storeName === "SneakerAsk" ||
       storeName === "Woovin" ||
-      storeName === "Hypeneedz";
+      storeName === "Hypeneedz" ||
+      storeName === "Shade Studios";
 
     const finalSku =
       getFirstValue(fields["SKU"]) ||
