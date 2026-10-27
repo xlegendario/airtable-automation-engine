@@ -74,6 +74,19 @@ async function shopifyStep({ f, merchant, mode, live, log }) {
 
   const foId = pick.fulfillmentOrder.id;
   const lineId = pick.line.id;
+
+  /*
+    Held in the store's Shopify: neither a fulfilment nor a move gets through
+    until the store releases it. A REVER exchange is held until the shopper's
+    old pair is back, which has nothing to do with the pair we send, so the
+    step is skipped and the invoice goes on without it. ORD-030085 stopped
+    here on "unfulfillable status= on_hold", with no Fulfilment Date.
+  */
+  if (String(pick.fulfillmentOrder.status) === "on_hold") {
+    const reasons = (pick.fulfillmentOrder.fulfillment_holds || []).map((hold) => hold.reason).filter(Boolean);
+    log(`Shopify: fulfillment order ${foId} is on hold (${reasons.join(", ") || "no reason given"}) - skipped`);
+    return;
+  }
   const moveHere = mode === "Move to our location" || (mode === "Fulfill, pick-up moved to us" && pick.pickup);
 
   if (moveHere) {
