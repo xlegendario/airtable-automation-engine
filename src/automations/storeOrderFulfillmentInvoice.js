@@ -43,6 +43,10 @@ import { rompslompApi, sendMail, shopifyApi } from "../lib/invoiceServices.js";
 const TABLE_NAME = "Unfulfilled Orders Log";
 
 // The statuses Make's trigger watched: from the moment we have the pair.
+// Make invoiced its last store order on 28-09-2026; every store is on the
+// engine since. Created Time is an ISO string, so it compares as text.
+const MAKE_LAST_ORDER_BEFORE = "2026-10-01";
+
 const STATUSES = ["Allocated", "Awaiting Label", "Requested Label", "Ready to Ship", "Fulfilled", "Change Supplier"];
 
 async function shopifyStep({ f, merchant, mode, live, log }) {
@@ -284,8 +288,14 @@ export const storeOrderFulfillmentInvoice = {
       box itself only on the way to its own invoice, and a failure of ours
       always leaves Invoice Error behind, so the combination below is Make's.
       Retry Invoice overrides it, for the rare case it is not.
+
+      Only an order from before October can be Make's: its last store invoice
+      is of 28-09-2026. A private order is made by duplicating the previous
+      one, Fulfillment Sent? included, and without this cut-off it was taken
+      for Make's and never invoiced - ORD-028069 and ORD-030112.
     */
     const handledByMake =
+      String(f["Created Time"] || "") < MAKE_LAST_ORDER_BEFORE &&
       Boolean(f["Fulfillment Sent?"]) &&
       !f["Rompslomp Invoice ID"] &&
       !f["Invoice Error"] &&
