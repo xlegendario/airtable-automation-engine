@@ -133,6 +133,7 @@ export const calculateLinkedUnitPrice = {
       storeName === "WOOVIN" ||
       storeName === "HYPENEEDZ" ||
       storeName === "SHADE STUDIOS" ||
+      storeName === "NORDIC SNEAKERS" ||
       storeName === "BOL" ||
       storeName === "APLUG.PL";
 
