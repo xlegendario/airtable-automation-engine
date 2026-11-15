@@ -82,6 +82,10 @@ export const calculateLinkedUnitPrice = {
     return (
       hasLinkedRecord(linkedInventoryUnit) &&
       ([
+        // Pending: an admin New Order made with its deal right away. The
+        // unit is linked before the order ever reaches Outsource, and without
+        // this it stayed on Pending for good (ORD-032839).
+        "Pending",
         "Outsource",
         "Claim Processing",
         "Confirmed",
@@ -385,6 +389,7 @@ export const calculateLinkedUnitPrice = {
  * is written either way, because that is the whole reason for running.
  */
 const STATUSES_BEFORE_ALLOCATED = [
+  "Pending",
   "Outsource",
   "Claim Processing",
   "Confirmed",
