@@ -11,6 +11,7 @@ export const runOutsourceCheck = {
     "StockX Price Check Status",
     "GOAT Price Check Status",
     "Fulfillment Status",
+    "Delivery",
   ],
 
   async shouldRun(record) {
@@ -23,6 +24,20 @@ export const runOutsourceCheck = {
     const startedAt = f["Sourcing Checked At"];
 
     if (fulfillmentStatus !== "Outsource") {
+      return false;
+    }
+
+    /*
+      Express (17-11-2026): the customer paid for 48 hours, and StockX,
+      Dewu and GOAT never make that. While Delivery says Express the order
+      stays with the consignor and the sellers (Quick Deal, Snapshot), and
+      no platform price is checked or bought.
+
+      "Delivery" is watched, so the moment someone sets it to Standard -
+      by hand now, by the "48h won't work" button later - this order comes
+      back through here and the normal platform check runs.
+    */
+    if (getStatusName(f["Delivery"]) === "Express") {
       return false;
     }
 
