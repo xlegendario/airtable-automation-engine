@@ -17,19 +17,18 @@ const { autoAllocateBestUnit, getDumpAsk } = await import(
 
 const NOW = new Date("2026-11-18T12:00:00Z");
 
-test("getDumpAsk: Custom Selling Price when the unit is on sale", () => {
-  const base = { "Dump Listing?": true, "Custom Selling Price": 120 };
+test("getDumpAsk: Custom Selling Price when one is set", () => {
+  const base = { "Custom Selling Price": 120 };
   assert.equal(getDumpAsk(base, NOW), 120);
   assert.equal(getDumpAsk({ ...base, "Dump Until": "2026-11-18" }, NOW), 120);
   assert.equal(getDumpAsk({ ...base, "Dump Until": "2026-12-01" }, NOW), 120);
 });
 
-test("getDumpAsk: null when not on sale, no price, or past Dump Until", () => {
-  assert.equal(getDumpAsk({ "Custom Selling Price": 120 }, NOW), null);
-  assert.equal(getDumpAsk({ "Dump Listing?": true }, NOW), null);
-  assert.equal(getDumpAsk({ "Dump Listing?": true, "Custom Selling Price": 0 }, NOW), null);
+test("getDumpAsk: null with no price, or past Dump Until", () => {
+  assert.equal(getDumpAsk({}, NOW), null);
+  assert.equal(getDumpAsk({ "Custom Selling Price": 0 }, NOW), null);
   assert.equal(
-    getDumpAsk({ "Dump Listing?": true, "Custom Selling Price": 120, "Dump Until": "2026-11-17" }, NOW),
+    getDumpAsk({ "Custom Selling Price": 120, "Dump Until": "2026-11-17" }, NOW),
     null
   );
 });
@@ -45,7 +44,6 @@ test("dump unit is allocated to an order priced from the sale ask", async () => 
       "Purchase Price": 90,
       "Ideal Selling Price": 200,
       "Minimum Selling Price": 180,
-      "Dump Listing?": true,
       "Custom Selling Price": 120,
     },
   };

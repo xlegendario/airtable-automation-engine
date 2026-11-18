@@ -203,6 +203,10 @@ export const autoAllocateBestUnit = {
     for (const unit of standardMatchingUnits) {
       const uf = unit.fields;
 
+      // Held back by hand in Lojiq Admin: kept off every channel and off
+      // store orders too, until the tick comes off.
+      if (uf["Hold Back?"] === true) continue;
+
       // A unit we put "on sale" (dump stock) is listed on every channel at
       // its Custom Selling Price, which sits below its Minimum Selling Price.
       // An order that comes in from that listing is priced from the sale
@@ -674,14 +678,13 @@ async function createConsignmentAutoOffer({
   return data;
 }
 
-// The sale ask of a dump unit, or null when the unit is not on sale.
-// A dump unit has Dump Listing? on, a Custom Selling Price above zero and
-// a Dump Until that is empty (no end) or today or later. "Today" is the
+// The sale ask of one of our own pairs, or null when it has none.
+// Own stock is listed by default (18-11-2026); a Custom Selling Price above
+// zero is the price it is listed at instead of Ideal, as long as its Dump
+// Until is empty (no end) or today or later. "Today" is the
 // Amsterdam date, since Dump Until is a plain Airtable date (YYYY-MM-DD)
 // and those compare correctly as strings.
 export function getDumpAsk(fields, now = new Date()) {
-  if (fields["Dump Listing?"] !== true) return null;
-
   const customPrice = getNumber(fields["Custom Selling Price"]);
   if (!(typeof customPrice === "number" && customPrice > 0)) return null;
 
