@@ -10,7 +10,6 @@ import {
 const RETURN_SERVICE_WEBHOOK_URL = "https://hook.eu2.make.com/nnrdb2gn605shmf7yvc56sl0wnr1np2d";
 const CONSIGNMENT_WEBHOOK_URL = "https://hook.eu2.make.com/3eu7vi2nfgngstc98sclpul3r1gskiyy";
 const PARTNER_STOCK_WEBHOOK_URL = "https://kickzcaviar.com/api/consignment/offers/create";
-const LOJIQ_WMS_BASE_URL = process.env.LOJIQ_WMS_BASE_URL;
 const KICKZ_CAVIAR_PORTAL_BASE_URL =
   process.env.KICKZ_CAVIAR_PORTAL_BASE_URL || "https://kickzcaviar.com";
 
@@ -729,21 +728,24 @@ function buildInventoryMatchFormula(orderSKU, orderSoftSKU, orderSize) {
   )`;
 }
 
+/*
+ * The label for a pair we just allocated from our own shelf.
+ *
+ * FIXED - this asked the WMS directly with source "auto_allocate_inventory",
+ * a source the WMS has never accepted: it answered 400 "Unsupported source",
+ * the allocation stood and the order sat without a label until someone
+ * requested one by hand. The portal's Request Label road knows every channel
+ * (marketplace labels, or asking the store), so the label is asked there.
+ */
 async function requestLabelForAutoAllocatedInventory(recordId) {
-  if (!LOJIQ_WMS_BASE_URL) {
-    throw new Error("LOJIQ_WMS_BASE_URL is missing");
-  }
-
-  const res = await fetch(`${LOJIQ_WMS_BASE_URL.replace(/\/$/, "")}/api/request-label`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      source: "auto_allocate_inventory",
-      record_id: recordId,
-    }),
-  });
+  const res = await fetch(
+    `${KICKZ_CAVIAR_PORTAL_BASE_URL.replace(/\/$/, "")}/api/consignment/request-label`,
+    {
+      method: "POST",
+      headers: kcPortalHeaders(),
+      body: JSON.stringify({ order_record_id: recordId }),
+    }
+  );
 
   const text = await res.text().catch(() => "");
 

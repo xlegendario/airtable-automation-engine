@@ -1,9 +1,9 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-// The module reads LOJIQ_WMS_BASE_URL when it loads, so set it first and
+// The module reads KICKZ_CAVIAR_PORTAL_BASE_URL when it loads, so set it first and
 // import afterwards. fetch is replaced so the label request goes nowhere.
-process.env.LOJIQ_WMS_BASE_URL = "https://wms.test";
+process.env.KICKZ_CAVIAR_PORTAL_BASE_URL = "https://portal.test";
 
 const fetchCalls = [];
 globalThis.fetch = async (url, init) => {
@@ -86,9 +86,6 @@ test("dump unit is allocated to an order priced from the sale ask", async () => 
   assert.equal(unitUpdate.fields["Selling Method"], "Plug & Play");
 
   assert.equal(fetchCalls.length, 1);
-  assert.equal(fetchCalls[0].url, "https://wms.test/api/request-label");
-  assert.deepEqual(fetchCalls[0].body, {
-    source: "auto_allocate_inventory",
-    record_id: "recORDER",
-  });
+  assert.equal(fetchCalls[0].url, "https://portal.test/api/consignment/request-label");
+  assert.deepEqual(fetchCalls[0].body, { order_record_id: "recORDER" });
 });
