@@ -204,8 +204,17 @@ export const autoAllocateBestUnit = {
     for (const unit of standardMatchingUnits) {
       const uf = unit.fields;
 
-      const ideal = getNumber(uf["Ideal Selling Price"]);
-      const min = getNumber(uf["Minimum Selling Price"]);
+      // A unit we put "on sale" (dump stock) is listed on every channel at
+      // its Custom Selling Price, which sits below its Minimum Selling Price.
+      // An order that comes in from that listing is priced from the sale
+      // ask, so measured against the normal ideal/min it would never match
+      // and the order would go to Outsource while the pair sits on our shelf.
+      // For such a unit the sale ask is both the ideal and the floor; the
+      // price logic below is otherwise unchanged.
+      const dumpAsk = getDumpAsk(uf);
+
+      const ideal = dumpAsk ?? getNumber(uf["Ideal Selling Price"]);
+      const min = dumpAsk ?? getNumber(uf["Minimum Selling Price"]);
       const cost = getNumber(uf["Purchase Price"]);
       const vatType = getSelectName(uf["VAT Type"]);
       const type = getSelectName(uf["Type"]);
@@ -664,6 +673,26 @@ async function createConsignmentAutoOffer({
   }
 
   return data;
+}
+
+// The sale ask of a dump unit, or null when the unit is not on sale.
+// A dump unit has Dump Listing? on, a Custom Selling Price above zero and
+// a Dump Until that is empty (no end) or today or later. "Today" is the
+// Amsterdam date, since Dump Until is a plain Airtable date (YYYY-MM-DD)
+// and those compare correctly as strings.
+export function getDumpAsk(fields, now = new Date()) {
+  if (fields["Dump Listing?"] !== true) return null;
+
+  const customPrice = getNumber(fields["Custom Selling Price"]);
+  if (!(typeof customPrice === "number" && customPrice > 0)) return null;
+
+  const dumpUntil = getFirstValue(fields["Dump Until"]);
+  if (dumpUntil) {
+    const today = new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Amsterdam" }).format(now);
+    if (String(dumpUntil).slice(0, 10) < today) return null;
+  }
+
+  return customPrice;
 }
 
 function getRecordId(recordOrId) {
