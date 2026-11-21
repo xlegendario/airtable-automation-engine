@@ -82,7 +82,6 @@ export const computeAndPushLowestOffer = {
     "Lowest Seller Offer",
     "Lowest Seller Offer (Normalized)",
     "Lowest Seller Offer (VAT excl.)",
-    "Lowest Partner Offer",
     "Partner or Seller", // re-fires after setPartnerOrSeller updates this
     "Consignment Pre-Offer?",
     "Consignment Offer Price",
@@ -230,22 +229,10 @@ function computeQualifyingOffer(f) {
   const consignmentPreOffer = !!getFirstValue(f["Consignment Pre-Offer?"]);
   const consignmentOfferPrice = getNumber(f["Consignment Offer Price"]);
 
-  if (partnerOrSeller === "Partner") {
-    const amount = getNumber(f["Lowest Partner Offer"]);
-    if (amount == null) return null;
-    const threshold = getNumber(f["Final Outsource Buying Price"]);
-    const beatsConsignment =
-      consignmentPreOffer &&
-      consignmentOfferPrice != null &&
-      amount < consignmentOfferPrice;
-    return {
-      amount,
-      vatType: "Margin", // partner offers are always Margin
-      threshold,
-      beatsConsignment,
-      isPartner: true,
-    };
-  }
+  // Partner Offers is the Asia partner flow now (kickz-caviar-portal); it
+  // never goes through here. setPartnerOrSeller no longer picks "Partner",
+  // and an old order that still says so is left alone.
+  if (partnerOrSeller === "Partner") return null;
 
   // partnerOrSeller === "Seller"
   const sellerVatType = getFirstValue(f["Lowest Offer VAT Type"]);

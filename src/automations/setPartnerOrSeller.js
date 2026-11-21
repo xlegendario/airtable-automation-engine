@@ -7,8 +7,11 @@ export const setPartnerOrSeller = {
   tableName: TABLE_NAME,
   eventTypes: ["changed"],
 
+  // "Lowest Partner Offer" is no longer read: Partner Offers now belongs to
+  // the Asia partner flow (kickz-caviar-portal), which makes the deal
+  // itself. Read here, a partner's price would go to the store as a seller
+  // offer - or confirm itself - before the partner flow decided anything.
   watchFields: [
-    "Lowest Partner Offer",
     "Lowest Seller Offer",
     "Lowest Seller Offer (Normalized)",
   ],
@@ -16,7 +19,7 @@ export const setPartnerOrSeller = {
   async shouldRun(record) {
     const f = record.fields;
 
-    const partnerVal = getNumber(f["Lowest Partner Offer"]);
+    const partnerVal = null;
     const sellerVal = getNumber(f["Lowest Seller Offer (Normalized)"]);
     const currentChoice = getSelectName(f["Partner or Seller"]);
 
@@ -28,7 +31,7 @@ export const setPartnerOrSeller = {
   async run(record, ctx) {
     const f = record.fields;
 
-    const partnerVal = getNumber(f["Lowest Partner Offer"]);
+    const partnerVal = null;
     const sellerVal = getNumber(f["Lowest Seller Offer (Normalized)"]);
 
     const choice = decidePartnerOrSeller(partnerVal, sellerVal);
