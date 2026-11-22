@@ -79,6 +79,23 @@ export const calculateLinkedUnitPrice = {
       ["Awaiting Label", "Ready to Ship"].includes(fulfillmentStatus) &&
       !(Number(f["Final Buying Price"]) > 0);
 
+    /*
+      Every marketplace parks a fresh sale on its own "<name> Processing"
+      while the consignors are asked, and a pair we dropship has no consignor
+      to wait for - so the deal is made right there, on that status.
+
+      Claim Processing, StockX Processing and GOAT Processing were named here
+      one at a time, and Woovin, bol, SneakerAsk, Hypeneedz, Nordic Sneakers,
+      Shade Studios and OBLIO were never added. On those the unit was linked
+      and this bailed out, so Final Buying Price stayed empty - no Rompslomp
+      invoice and no profit on the unit, the same damage the two races above
+      describe.
+
+      Matched on the shape of the name rather than listed, because the list
+      grows with every marketplace and was already four behind.
+    */
+    const beingSourced = /\sProcessing$/.test(fulfillmentStatus);
+
     return (
       hasLinkedRecord(linkedInventoryUnit) &&
       ([
@@ -87,12 +104,9 @@ export const calculateLinkedUnitPrice = {
         // this it stayed on Pending for good (ORD-032839).
         "Pending",
         "Outsource",
-        "Claim Processing",
         "Confirmed",
         "Requested Label",
-        "StockX Processing",
-        "GOAT Processing",
-      ].includes(fulfillmentStatus) || lateStatus) &&
+      ].includes(fulfillmentStatus) || beingSourced || lateStatus) &&
       !pricedYet
     );
   },
