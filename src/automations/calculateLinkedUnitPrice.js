@@ -402,18 +402,32 @@ export const calculateLinkedUnitPrice = {
  * So the status is only advanced from the ones that come before it. The price
  * is written either way, because that is the whole reason for running.
  */
+/*
+  Every "<marketplace> Processing" belongs here as well, for the same reason
+  shouldRun had to learn them: a sale parks there while the consignors are
+  asked, and a dropshipped pair is dealt right on that status.
+
+  ORD-034109 showed what the omission costs. The price was written, the
+  status stayed on "Woovin Processing", and an order that never reaches
+  Allocated never reaches Fulfilled either - so it never turns up in
+  Earnings.
+
+  Matched on the shape of the name, like the list in shouldRun. Nothing
+  after Allocated can match it, so the protection above still holds: an
+  order that has asked for a label is never dragged back a step.
+*/
 const STATUSES_BEFORE_ALLOCATED = [
   "Pending",
   "Outsource",
-  "Claim Processing",
   "Confirmed",
-  "StockX Processing",
-  "GOAT Processing",
 ];
+
+const beforeAllocated = (status) =>
+  STATUSES_BEFORE_ALLOCATED.includes(status) || /\sProcessing$/.test(status);
 
 async function updateAllocated(order, unitId, finalPrice, ctx, { notes }) {
   const currentStatus = getSelectName(order.fields["Fulfillment Status"]);
-  const mayAdvance = STATUSES_BEFORE_ALLOCATED.includes(currentStatus);
+  const mayAdvance = beforeAllocated(currentStatus);
 
   if (!mayAdvance) {
     console.log(
