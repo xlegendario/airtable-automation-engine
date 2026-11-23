@@ -87,3 +87,73 @@ test("dump unit is allocated to an order priced from the sale ask", async () => 
   assert.equal(fetchCalls[0].url, "https://portal.test/api/consignment/request-label");
   assert.deepEqual(fetchCalls[0].body, { order_record_id: "recORDER" });
 });
+
+/*
+ * A consignment unit that is already ours.
+ *
+ * Allocating a consignment unit IS the purchase from its consignor, which is
+ * why a payable is stamped on it here. Once the pair is ours - a buyer sent
+ * it back and we kept it - that stamp would buy a pair we already paid for,
+ * and the Discord webhook would ask its consignor to post a pair that is on
+ * our own shelf. Five of those went out in November 2026.
+ */
+test("our own consignment pair is allocated without being bought again", async () => {
+  fetchCalls.length = 0;
+
+  const ourPair = {
+    id: "recOURS",
+    fields: {
+      "Item ID": "CS-008476",
+      Type: "Consignment",
+      "Own Stock?": true,
+      "Cancel Status": "Return",
+      "VAT Type": "Margin",
+      "Purchase Price": 110,
+      "Payment Status": "Paid",
+      "Payment Note": "1100 (MO20261120)",
+      "Ideal Selling Price": 125,
+      "Minimum Selling Price": 117.5,
+      "Seller ID": ["recSELLER"],
+    },
+  };
+
+  const updates = [];
+  const ctx = {
+    airtable: {
+      listRecords: async () => [ourPair],
+      updateRecord: async (table, id, fields) => {
+        updates.push({ table, id, fields });
+      },
+    },
+  };
+
+  await autoAllocateBestUnit.run(
+    {
+      id: "recORDER2",
+      fields: {
+        SKU: "A01FW702-BLK",
+        Size: "43",
+        Client: ["recCLIENT"],
+        "Target Buying Price": 137,
+        "Maximum Buying Price": 140,
+        "Auto Offer Accept?": "Yes",
+      },
+    },
+    ctx
+  );
+
+  const unitUpdate = updates.find((u) => u.table === "Inventory Units");
+  assert.equal(unitUpdate.id, "recOURS");
+  assert.equal(unitUpdate.fields["Availability Status"], "Reserved");
+
+  // His payout for the sale that came back stands, untouched.
+  assert.equal("Payment Status" in unitUpdate.fields, false);
+  assert.equal("Payment Note" in unitUpdate.fields, false);
+  assert.equal("Purchase Date" in unitUpdate.fields, false);
+
+  // Only the label request, never the consignment webhook.
+  assert.deepEqual(
+    fetchCalls.map((call) => call.url),
+    ["https://portal.test/api/consignment/request-label"]
+  );
+});

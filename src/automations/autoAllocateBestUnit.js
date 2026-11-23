@@ -297,15 +297,42 @@ export const autoAllocateBestUnit = {
         "Selling Method": "Plug & Play",
       };
 
+      /*
+       * Our own pair is not bought a second time.
+       *
+       * A consignment unit is stamped with a payable here because allocating
+       * it IS the purchase from its consignor. That stops being true once
+       * the pair is ours: a buyer sent it back, we kept it, and the unit went
+       * to Available while it still carries the consignor's Seller ID -
+       * which is the origin, not someone to pay again. Stamping it put a
+       * fresh "To Pay" and a new Purchase Date over a payable that was
+       * already settled, and asked him on Discord for a pair on our own
+       * shelf (SE-00879, November 2026).
+       *
+       * "Own Stock?" on the unit is the answer. The pair is still allocated
+       * and priced as before; only the purchase is left alone, and the label
+       * goes through the portal, which sends an own pair's to our own channel.
+       */
       if (typeName === "Consignment" || typeName === "Partner Consignment") {
-        const hardCost = getNumber(bestUnit.fields["Purchase Price"]);
+        const isOwnStock = bestUnit.fields["Own Stock?"] === true;
 
-        invUpdate["Payment Note"] =
-          typeof hardCost === "number" ? `€${hardCost.toFixed(2)}` : "(unknown)";
-        invUpdate["Payment Status"] = "To Pay";
-        invUpdate["Purchase Date"] = new Date().toISOString();
+        if (isOwnStock) {
+          console.log(
+            `ℹ️ ${getFirstValue(bestUnit.fields["Item ID"])} is our own stock: ` +
+              "allocated, but no purchase is booked and its seller is not asked."
+          );
+        }
 
-        if (typeName === "Consignment") {
+        const hardCost = isOwnStock ? null : getNumber(bestUnit.fields["Purchase Price"]);
+
+        if (!isOwnStock) {
+          invUpdate["Payment Note"] =
+            typeof hardCost === "number" ? `€${hardCost.toFixed(2)}` : "(unknown)";
+          invUpdate["Payment Status"] = "To Pay";
+          invUpdate["Purchase Date"] = new Date().toISOString();
+        }
+
+        if (typeName === "Consignment" && !isOwnStock) {
           const itemId = getFirstValue(bestUnit.fields["Item ID"]);
 
           if (itemId.startsWith("CS") && isAutoOfferAccept) {
