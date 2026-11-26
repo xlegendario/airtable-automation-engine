@@ -199,7 +199,35 @@ export const calculateLinkedUnitPrice = {
       const settledPrice = offerToStore ?? customOffer;
 
       if (settledPrice != null) {
-        const finalPrice = applyVatConversionIfNeeded(settledPrice);
+        /*
+         * CHANGED - the VAT of the pair is read off the unit, not the order.
+         *
+         * "Offer VAT Type" is written when a seller offer is accepted, so a
+         * claimed deal never has one: a consignment deal that flaked and was
+         * claimed as a quick deal reached here with the field empty, the
+         * price was not taken out of VAT, and the unit was sold at the price
+         * the buyer paid including VAT. ORD-034481: €219 on the unit instead
+         * of €180.99, and €26 profit instead of €10.
+         *
+         * The unit belongs to whoever actually supplies the pair, so its VAT
+         * Type is right for a claim, a counter and an accepted offer alike.
+         * VAT0 or VAT21 to a Dutch client is sold with VAT - the same rule
+         * computeAndPushLowestOffer applies when it writes "Offer VAT Type".
+         */
+        const unitVatType = normVatType(getSelectName(unit.fields?.["VAT Type"]));
+        const pairVatType =
+          unitVatType === "VAT0" || unitVatType === "VAT21"
+            ? clientCountryNorm.includes("netherland")
+              ? "VAT21"
+              : "VAT0"
+            : unitVatType === "MARGIN"
+              ? "MARGIN"
+              : offerVatTypeNorm;
+
+        const finalPrice =
+          pairVatType === "VAT21" && clientCountryNorm.includes("netherland")
+            ? round2(settledPrice / 1.21)
+            : round2(settledPrice);
 
         await updateAllocated(order, unitId, finalPrice, ctx, {
           notes: `Forced: ${storeName} sets its own price → used ${
